@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collaborative Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .modal {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+
+    .modal p {
+      color: #7f8c8d;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #ecf0f1;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .modal input:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    .modal button {
+      width: 100%;
+      padding: 12px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background 0.2s;
+    }
+
+    .modal button:hover {
+      background: #2980b9;
+    }
+
+    .modal button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+
+    /* Session List Styles */
+    .session-section {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #ecf0f1;
+    }
+
+    .session-section h3 {
+      font-size: 14px;
+      color: #7f8c8d;
+      margin-bottom: 1rem;
+    }
+
+    .active-session {
+      background: #e8f5e9;
+      border: 2px solid #27ae60;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .active-session h4 {
+      color: #27ae60;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .active-session p {
+      color: #2c3e50;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .session-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border: 1px solid #ecf0f1;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .session-item:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+    }
+
+    .session-item-info h4 {
+      font-size: 14px;
+      color: #2c3e50;
+      margin-bottom: 4px;
+    }
+
+    .session-item-info p {
+      font-size: 12px;
+      color: #7f8c8d;
+      margin: 0;
+    }
+
+    .session-item-badge {
+      background: #3498db;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .no-sessions {
+      text-align: center;
+      color: #95a5a6;
+      padding: 20px;
+      font-size: 14px;
+    }
+
+    /* Icon Picker Modal */
+    .icon-picker {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .icon-option {
+      width: 50px;
+      height: 50px;
+      border: 2px solid #ecf0f1;
+      border-radius: 8px;
+      background: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-option:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+    }
+
+    .icon-option.selected {
+      border-color: #3498db;
+      background: #e3f2fd;
+    }
+
+    .marker-form {
+      margin-top: 1rem;
+    }
+
+    .marker-form input {
+      margin-bottom: 0.5rem;
+    }
+
+    .marker-form-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .marker-form-buttons button {
+      flex: 1;
+      margin-top: 0;
+    }
+
+    .btn-cancel {
+      background: #ecf0f1;
+      color: #2c3e50;
+    }
+
+    .btn-cancel:hover {
+      background: #bdc3c7;
+    }
+
+    /* Sidebar Styles */
+    .sidebar {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      max-width: 280px;
+      max-height: calc(100vh - 20px);
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #ecf0f1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-header h3 {
+      color: #2c3e50;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .online-count {
+      background: #27ae60;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .session-info {
+      padding: 12px 16px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ecf0f1;
+    }
+
+    .session-info h4 {
+      font-size: 13px;
+      color: #2c3e50;
+      margin-bottom: 4px;
+    }
+
+    .session-info p {
+      font-size: 11px;
+      color: #7f8c8d;
+      margin: 0;
+    }
+
+    .user-list {
+      padding: 8px;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .user-item:hover {
+      background: #f8f9fa;
+    }
+
+    .user-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .user-name {
+      font-size: 14px;
+      color: #2c3e50;
+      flex: 1;
+    }
+
+    .user-badge {
+      font-size: 10px;
+      background: #3498db;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+
+    .user-tracking-status {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+
+    .tracking-on {
+      background: #27ae60;
+      color: white;
+    }
+
+    .tracking-off {
+      background: #95a5a6;
+      color: white;
+    }
+
+    .user-path-info {
+      font-size: 10px;
+      color: #95a5a6;
+      margin-left: 24px;
+    }
+
+    /* Controls */
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 12px 20px;
+      border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .controls button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #3498db;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2980b9;
+    }
+
+    .btn-secondary {
+      background: #ecf0f1;
+      color: #2c3e50;
+    }
+
+    .btn-secondary:hover {
+      background: #bdc3c7;
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
+    .btn-warning {
+      background: #f39c12;
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #d68910;
+    }
+
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #229954;
+    }
+
+    .btn-active {
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+    }
+
+    /* Marker popup styles */
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+    }
+
+    .marker-popup {
+      min-width: 150px;
+    }
+
+    .marker-popup h4 {
+      margin-bottom: 5px;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .marker-popup p {
+      color: #7f8c8d;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .marker-popup button {
+      width: 100%;
+      padding: 6px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    /* Status indicator */
+    .status {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    /* Tracking indicator */
+    .tracking-indicator {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px 16px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .tracking-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    .tracking-dot.active {
+      background: #27ae60;
+    }
+
+    .tracking-dot.inactive {
+      background: #95a5a6;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+
+    /* Legend */
+    .legend {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .legend-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .legend-line {
+      width: 20px;
+      height: 3px;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
+
+    /* Past Sessions Modal */
+    .past-sessions-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .past-session-item {
+      padding: 16px;
+      border: 1px solid #ecf0f1;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .past-session-item:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+    }
+
+    .past-session-item h4 {
+      font-size: 15px;
+      color: #2c3e50;
+      margin-bottom: 6px;
+    }
+
+    .past-session-item p {
+      font-size: 12px;
+      color: #7f8c8d;
+      margin: 0;
+    }
+
+    .past-session-stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .past-session-stats span {
+      font-size: 11px;
+      background: #ecf0f1;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: #7f8c8d;
+    }
+
+    /* Replay Mode Banner */
+    .replay-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #9b59b6;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      font-weight: 600;
+      z-index: 1500;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .replay-banner button {
+      background: white;
+      color: #9b59b6;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Two column layout for buttons */
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .button-row button {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <!-- Welcome/Session Modal -->
+  <div id="welcomeModal" class="modal-overlay">
+    <div class="modal">
+      <h2>Welcome!</h2>
+      <p>Enter your name to get started</p>
+      <input type="text" id="usernameInput" placeholder="Your name" maxlength="20" autofocus />
+
+      <div id="activeSessionSection" class="session-section hidden">
+        <h3>Active Session</h3>
+        <div id="activeSessionInfo" class="active-session"></div>
+        <div class="button-row">
+          <button id="joinExistingBtn" class="btn-success">Join Session</button>
+        </div>
+      </div>
+
+      <div class="session-section">
+        <h3>Create New Session</h3>
+        <input type="text" id="newSessionName" placeholder="Session name (optional)" maxlength="50" />
+        <button id="createSessionBtn">Create & Join</button>
+      </div>
+
+      <div class="session-section">
+        <h3>Or View Past Sessions</h3>
+        <button id="viewPastSessionsBtn" class="btn-secondary">View Past Sessions</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Past Sessions Modal -->
+  <div id="pastSessionsModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Past Sessions</h2>
+      <p>Click on a session to view it (read-only)</p>
+      <div id="pastSessionsList" class="past-sessions-list">
+        <div class="no-sessions">Loading...</div>
+      </div>
+      <button id="closePastSessionsBtn" class="btn-secondary">Close</button>
+    </div>
+  </div>
+
+  <!-- Marker Modal -->
+  <div id="markerModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Add Marker</h2>
+      <p>Choose an icon and add a label (optional)</p>
+      <div class="icon-picker" id="iconPicker"></div>
+      <div class="marker-form">
+        <input type="text" id="markerLabel" placeholder="Label (optional)" maxlength="50" />
+        <div class="marker-form-buttons">
+          <button id="cancelMarkerBtn" class="btn-cancel">Cancel</button>
+          <button id="confirmMarkerBtn" class="btn-primary">Add Marker</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Replay Mode Banner -->
+  <div id="replayBanner" class="replay-banner hidden">
+    <span id="replayBannerText">Viewing past session</span>
+    <button id="exitReplayBtn">Exit Replay</button>
+  </div>
+
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Tracking Indicator -->
+  <div id="trackingIndicator" class="tracking-indicator hidden">
+    <div id="trackingDot" class="tracking-dot active"></div>
+    <span id="trackingText">Tracking</span>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar hidden">
+    <div id="sessionInfo" class="session-info">
+      <h4 id="sessionName">Session</h4>
+      <p id="sessionMeta">Started: --</p>
+    </div>
+    <div class="sidebar-header">
+      <h3>Online Users</h3>
+      <span id="onlineCount" class="online-count">0</span>
+    </div>
+    <div id="userList" class="user-list"></div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls" class="controls hidden">
+    <button id="trackingBtn" class="btn-success">Pause</button>
+    <button id="addMarkerBtn" class="btn-primary">Add Marker</button>
+    <button id="clearPathBtn" class="btn-warning">Clear Path</button>
+    <button id="centerBtn" class="btn-secondary">My Location</button>
+    <button id="endSessionBtn" class="btn-danger">End Session</button>
+  </div>
+
+  <!-- Replay Controls -->
+  <div id="replayControls" class="controls hidden">
+    <button id="viewPastBtn" class="btn-primary">View Past Sessions</button>
+    <button id="startNewBtn" class="btn-success">Start New Session</button>
+  </div>
+
+  <!-- Status indicator -->
+  <div id="status" class="status">Click on the map to place a marker</div>
+
+  <!-- Legend -->
+  <div id="legend" class="legend hidden">
+    <div class="legend-item">
+      <div class="legend-line" style="background: #3498db;"></div>
+      <span>User movement path</span>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // App State
+    const state = {
+      user: null,
+      socket: null,
+      map: null,
+      users: [],
+      markers: {},
+      userMarkers: {},
+      userPolylines: {},
+      addingMarker: false,
+      pendingMarkerPosition: null,
+      selectedIcon: '📍',
+      availableIcons: ['📍', '🚩', '⭐', '❤️', '🔥', '💡', '🎯', '⚠️', '✅', '❌', '🏠', '☕', '🅿️', '⛽', '🏥'],
+      tracking: true,
+      watchId: null,
+      currentSession: null,
+      replayMode: false,
+      replayData: null
+    };
+
+    // DOM Elements
+    const elements = {
+      welcomeModal: document.getElementById('welcomeModal'),
+      usernameInput: document.getElementById('usernameInput'),
+      newSessionName: document.getElementById('newSessionName'),
+      createSessionBtn: document.getElementById('createSessionBtn'),
+      activeSessionSection: document.getElementById('activeSessionSection'),
+      activeSessionInfo: document.getElementById('activeSessionInfo'),
+      joinExistingBtn: document.getElementById('joinExistingBtn'),
+      viewPastSessionsBtn: document.getElementById('viewPastSessionsBtn'),
+      pastSessionsModal: document.getElementById('pastSessionsModal'),
+      pastSessionsList: document.getElementById('pastSessionsList'),
+      closePastSessionsBtn: document.getElementById('closePastSessionsBtn'),
+      markerModal: document.getElementById('markerModal'),
+      iconPicker: document.getElementById('iconPicker'),
+      markerLabel: document.getElementById('markerLabel'),
+      cancelMarkerBtn: document.getElementById('cancelMarkerBtn'),
+      confirmMarkerBtn: document.getElementById('confirmMarkerBtn'),
+      replayBanner: document.getElementById('replayBanner'),
+      replayBannerText: document.getElementById('replayBannerText'),
+      exitReplayBtn: document.getElementById('exitReplayBtn'),
+      trackingIndicator: document.getElementById('trackingIndicator'),
+      trackingDot: document.getElementById('trackingDot'),
+      trackingText: document.getElementById('trackingText'),
+      sidebar: document.getElementById('sidebar'),
+      sessionInfo: document.getElementById('sessionInfo'),
+      sessionName: document.getElementById('sessionName'),
+      sessionMeta: document.getElementById('sessionMeta'),
+      userList: document.getElementById('userList'),
+      onlineCount: document.getElementById('onlineCount'),
+      controls: document.getElementById('controls'),
+      trackingBtn: document.getElementById('trackingBtn'),
+      addMarkerBtn: document.getElementById('addMarkerBtn'),
+      clearPathBtn: document.getElementById('clearPathBtn'),
+      centerBtn: document.getElementById('centerBtn'),
+      endSessionBtn: document.getElementById('endSessionBtn'),
+      replayControls: document.getElementById('replayControls'),
+      viewPastBtn: document.getElementById('viewPastBtn'),
+      startNewBtn: document.getElementById('startNewBtn'),
+      status: document.getElementById('status'),
+      legend: document.getElementById('legend')
+    };
+
+    // Initialize icon picker
+    function initIconPicker() {
+      elements.iconPicker.innerHTML = state.availableIcons.map(icon => `
+        <button class="icon-option ${icon === state.selectedIcon ? 'selected' : ''}" data-icon="${icon}">
+          ${icon}
+        </button>
+      `).join('');
+
+      elements.iconPicker.querySelectorAll('.icon-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          elements.iconPicker.querySelectorAll('.icon-option').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          state.selectedIcon = btn.dataset.icon;
+        });
+      });
+    }
+
+    // Initialize map
+    function initMap() {
+      state.map = L.map('map').setView([0, 0], 2);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(state.map);
+
+      // Handle map clicks
+      state.map.on('click', handleMapClick);
+    }
+
+    // Create colored marker icon
+    function createMarkerIcon(color, isUser = false) {
+      const size = isUser ? 16 : 12;
+
+      return L.divIcon({
+        className: 'user-marker',
+        html: `
+          <div style="
+            background: ${color};
+            width: ${size}px;
+            height: ${size}px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: relative;
+          ">
+            <div style="
+              position: absolute;
+              bottom: -8px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: ${color};
+              width: 0;
+              height: 0;
+              border-left: 6px solid transparent;
+              border-right: 6px solid transparent;
+              border-top: 8px solid ${color};
+            "></div>
+          </div>
+        `,
+        iconSize: [size + 6, size + 14],
+        iconAnchor: [(size + 6) / 2, size + 14]
+      });
+    }
+
+    // Create shared marker icon with emoji
+    function createSharedMarkerIcon(icon, color) {
+      return L.divIcon({
+        className: 'shared-marker',
+        html: `
+          <div style="
+            font-size: 28px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+          ">${icon}</div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+      });
+    }
+
+    // Create user label
+    function createUserLabel(name, color) {
+      return L.divIcon({
+        className: 'user-label',
+        html: `
+          <div style="
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: ${color};
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            white-space: nowrap;
+          ">${name}</div>
+        `,
+        iconSize: [100, 20],
+        iconAnchor: [50, -20]
+      });
+    }
+
+    // Handle map click
+    function handleMapClick(e) {
+      if (state.replayMode) return;
+      if (!state.addingMarker) return;
+
+      state.pendingMarkerPosition = { lat: e.latlng.lat, lng: e.latlng.lng };
+      elements.markerLabel.value = '';
+      elements.markerModal.classList.remove('hidden');
+      setAddingMarker(false);
+    }
+
+    // Set marker adding mode
+    function setAddingMarker(active) {
+      state.addingMarker = active;
+      elements.addMarkerBtn.classList.toggle('btn-active', active);
+      elements.status.classList.toggle('visible', active);
+
+      if (active) {
+        state.map.getContainer().style.cursor = 'crosshair';
+      } else {
+        state.map.getContainer().style.cursor = '';
+      }
+    }
+
+    // Confirm marker placement
+    function confirmMarker() {
+      if (!state.pendingMarkerPosition) return;
+
+      state.socket.emit('marker:add', {
+        lat: state.pendingMarkerPosition.lat,
+        lng: state.pendingMarkerPosition.lng,
+        label: elements.markerLabel.value.trim(),
+        icon: state.selectedIcon
+      });
+
+      elements.markerModal.classList.add('hidden');
+      state.pendingMarkerPosition = null;
+    }
+
+    // Cancel marker placement
+    function cancelMarker() {
+      elements.markerModal.classList.add('hidden');
+      state.pendingMarkerPosition = null;
+    }
+
+    // Update tracking indicator
+    function updateTrackingIndicator() {
+      elements.trackingDot.className = state.tracking ? 'tracking-dot active' : 'tracking-dot inactive';
+      elements.trackingText.textContent = state.tracking ? 'Tracking' : 'Paused';
+      elements.trackingBtn.textContent = state.tracking ? 'Pause' : 'Resume';
+      elements.trackingBtn.className = state.tracking ? 'btn-success' : 'btn-secondary';
+    }
+
+    // Toggle tracking
+    function toggleTracking() {
+      state.tracking = !state.tracking;
+      updateTrackingIndicator();
+      state.socket.emit('user:toggleTracking');
+    }
+
+    // Update user list UI
+    function updateUserList() {
+      elements.userList.innerHTML = state.users.map(user => `
+        <div class="user-item">
+          <div class="user-color" style="background: ${user.color}"></div>
+          <span class="user-name">${escapeHtml(user.name)}</span>
+          ${state.user && user.id === state.user.id ? '<span class="user-badge">You</span>' : ''}
+          <span class="user-tracking-status ${user.tracking ? 'tracking-on' : 'tracking-off'}">
+            ${user.tracking ? '*' : 'o'}
+          </span>
+        </div>
+        ${user.path && user.path.length > 1 ? `<div class="user-path-info">${user.path.length} points</div>` : ''}
+      `).join('');
+
+      elements.onlineCount.textContent = state.users.length;
+    }
+
+    // Update user markers and paths on map
+    function updateUserMarkers() {
+      // Remove old markers and polylines
+      Object.values(state.userMarkers).forEach(marker => {
+        state.map.removeLayer(marker.icon);
+        if (marker.label) state.map.removeLayer(marker.label);
+      });
+      state.userMarkers = {};
+
+      Object.values(state.userPolylines).forEach(polyline => {
+        state.map.removeLayer(polyline);
+      });
+      state.userPolylines = {};
+
+      // Add new markers and paths
+      state.users.forEach((user, index) => {
+        if (user.lat && user.lng) {
+          // Add current position marker
+          const icon = L.marker([user.lat, user.lng], {
+            icon: createMarkerIcon(user.color, true)
+          }).addTo(state.map);
+
+          const label = L.marker([user.lat, user.lng], {
+            icon: createUserLabel(user.name, user.color)
+          }).addTo(state.map);
+
+          state.userMarkers[user.id || `replay_${index}`] = { icon, label };
+
+          // Add path polyline if user has path history
+          if (user.path && user.path.length > 1) {
+            const pathCoords = user.path.map(p => [p.lat, p.lng]);
+            const polyline = L.polyline(pathCoords, {
+              color: user.color,
+              weight: 3,
+              opacity: 0.7,
+              smoothFactor: 1
+            }).addTo(state.map);
+
+            state.userPolylines[user.id || `replay_${index}`] = polyline;
+          }
+        }
+      });
+    }
+
+    // Add marker to map
+    function addMarkerToMap(marker) {
+      if (state.markers[marker.id]) return;
+
+      const icon = L.marker([marker.lat, marker.lng], {
+        icon: createSharedMarkerIcon(marker.icon || '📍', marker.color)
+      }).addTo(state.map);
+
+      const popupContent = state.replayMode ? `
+        <div class="marker-popup">
+          <h4>${marker.icon || '📍'} ${marker.label ? escapeHtml(marker.label) : ''}</h4>
+          <p>By: ${escapeHtml(marker.createdBy)}</p>
+        </div>
+      ` : `
+        <div class="marker-popup">
+          <h4>${marker.icon || '📍'} ${marker.label ? escapeHtml(marker.label) : ''}</h4>
+          <p>By: ${escapeHtml(marker.createdBy)}</p>
+          <button onclick="window.removeMarker('${marker.id}')">Remove</button>
+        </div>
+      `;
+
+      icon.bindPopup(popupContent);
+
+      state.markers[marker.id] = icon;
+    }
+
+    // Remove marker from map
+    function removeMarkerFromMap(markerId) {
+      if (state.markers[markerId]) {
+        state.map.removeLayer(state.markers[markerId]);
+        delete state.markers[markerId];
+      }
+    }
+
+    // Global remove marker function (called from popup)
+    window.removeMarker = function(markerId) {
+      if (state.socket) {
+        state.socket.emit('marker:remove', markerId);
+      }
+    };
+
+    // Clear user's path
+    function clearMyPath() {
+      if (state.socket) {
+        state.socket.emit('user:clearPath');
+      }
+    }
+
+    // Center map on user's location
+    function centerOnUser() {
+      if (state.user && state.user.lat && state.user.lng) {
+        state.map.setView([state.user.lat, state.user.lng], 15);
+      }
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize Socket.io
+    function initSocket() {
+      state.socket = io();
+
+      // Receive assigned user info
+      state.socket.on('user:assigned', (data) => {
+        state.user.id = data.id;
+        state.user.color = data.color;
+        state.tracking = data.tracking !== undefined ? data.tracking : true;
+        updateTrackingIndicator();
+      });
+
+      // Receive tracking state change
+      state.socket.on('user:trackingChanged', (tracking) => {
+        state.tracking = tracking;
+        updateTrackingIndicator();
+      });
+
+      // Receive users update
+      state.socket.on('users:update', (users) => {
+        state.users = users;
+        updateUserList();
+        updateUserMarkers();
+      });
+
+      // Receive initial markers
+      state.socket.on('markers:init', (markers) => {
+        markers.forEach(addMarkerToMap);
+      });
+
+      // Receive icons list
+      state.socket.on('icons:list', (icons) => {
+        if (icons && icons.length > 0) {
+          state.availableIcons = icons;
+          initIconPicker();
+        }
+      });
+
+      // Receive new marker
+      state.socket.on('marker:added', (marker) => {
+        addMarkerToMap(marker);
+      });
+
+      // Receive marker removal
+      state.socket.on('marker:removed', (markerId) => {
+        removeMarkerFromMap(markerId);
+      });
+
+      // Receive markers update
+      state.socket.on('markers:update', (markers) => {
+        // Clear existing markers
+        Object.keys(state.markers).forEach(removeMarkerFromMap);
+        // Add all markers
+        markers.forEach(addMarkerToMap);
+      });
+
+      // Receive session info
+      state.socket.on('session:info', (session) => {
+        if (session) {
+          state.currentSession = session;
+          elements.sessionName.textContent = session.name;
+          elements.sessionMeta.textContent = `Started: ${new Date(session.createdAt).toLocaleString()} | Users: ${session.userCount}`;
+          elements.sessionInfo.classList.remove('hidden');
+        } else {
+          state.currentSession = null;
+          elements.sessionInfo.classList.add('hidden');
+        }
+      });
+
+      // Session ended
+      state.socket.on('session:ended', (result) => {
+        if (result) {
+          alert(`Session ended and saved!\nFile: ${result.filename}`);
+        }
+        // Return to welcome screen
+        showWelcomeScreen();
+      });
+    }
+
+    // Start geolocation tracking
+    function startGeolocation() {
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+        return;
+      }
+
+      state.watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          state.user.lat = latitude;
+          state.user.lng = longitude;
+
+          // Always send position to server (server will decide whether to record)
+          if (state.socket) {
+            state.socket.emit('user:position', {
+              lat: latitude,
+              lng: longitude
+            });
+          }
+
+          // Center map on first position
+          if (!state.user.initialPosition) {
+            state.user.initialPosition = true;
+            state.map.setView([latitude, longitude], 15);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          let message = 'Unable to get your location. ';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              message += 'Please allow location access.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              message += 'Location information is unavailable.';
+              break;
+            case error.TIMEOUT:
+              message += 'Location request timed out.';
+              break;
+          }
+          alert(message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000
+        }
+      );
+    }
+
+    // Check for active session
+    async function checkActiveSession() {
+      try {
+        const response = await fetch('/api/current-session');
+        const data = await response.json();
+        if (data.active) {
+          elements.activeSessionSection.classList.remove('hidden');
+          elements.activeSessionInfo.innerHTML = `
+            <h4>${escapeHtml(data.name)}</h4>
+            <p>Started: ${new Date(data.createdAt).toLocaleString()} | ${data.userCount} users</p>
+          `;
+          state.currentSession = data;
+          return true;
+        }
+      } catch (e) {
+        console.error('Error checking active session:', e);
+      }
+      elements.activeSessionSection.classList.add('hidden');
+      return false;
+    }
+
+    // Show welcome screen
+    function showWelcomeScreen() {
+      // Stop geolocation
+      if (state.watchId) {
+        navigator.geolocation.clearWatch(state.watchId);
+        state.watchId = null;
+      }
+
+      // Reset state
+      state.user = null;
+      state.users = [];
+      state.markers = {};
+      state.userMarkers = {};
+      state.userPolylines = {};
+      state.currentSession = null;
+      state.replayMode = false;
+      state.replayData = null;
+
+      // Clear map
+      if (state.map) {
+        Object.values(state.userMarkers).forEach(m => {
+          state.map.removeLayer(m.icon);
+          if (m.label) state.map.removeLayer(m.label);
+        });
+        Object.values(state.userPolylines).forEach(p => state.map.removeLayer(p));
+        Object.values(state.markers).forEach(m => state.map.removeLayer(m));
+      }
+      state.userMarkers = {};
+      state.userPolylines = {};
+      state.markers = {};
+
+      // Hide UI elements
+      elements.sidebar.classList.add('hidden');
+      elements.controls.classList.add('hidden');
+      elements.trackingIndicator.classList.add('hidden');
+      elements.legend.classList.add('hidden');
+      elements.replayBanner.classList.add('hidden');
+      elements.replayControls.classList.add('hidden');
+
+      // Show welcome modal
+      elements.welcomeModal.classList.remove('hidden');
+
+      // Check for active session
+      checkActiveSession();
+    }
+
+    // Join session (either existing or new)
+    function joinSession(name, createNew = false, sessionName = '') {
+      state.user = {
+        name: name,
+        lat: null,
+        lng: null
+      };
+
+      // Save to localStorage
+      localStorage.setItem('collaborativeMap_username', name);
+
+      // Hide modal, show controls
+      elements.welcomeModal.classList.add('hidden');
+      elements.sidebar.classList.remove('hidden');
+      elements.controls.classList.remove('hidden');
+      elements.trackingIndicator.classList.remove('hidden');
+      elements.legend.classList.remove('hidden');
+
+      // Initialize socket
+      initSocket();
+
+      // Create new session if requested
+      if (createNew) {
+        state.socket.emit('session:create', sessionName || `${name}'s Session`);
+      }
+
+      // Get initial position then join
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          state.socket.emit('user:join', {
+            name: name,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+
+          state.user.lat = position.coords.latitude;
+          state.user.lng = position.coords.longitude;
+          state.user.initialPosition = true;
+          state.map.setView([position.coords.latitude, position.coords.longitude], 15);
+
+          // Start continuous tracking
+          startGeolocation();
+        },
+        (error) => {
+          // Join without position, will update later
+          state.socket.emit('user:join', {
+            name: name,
+            lat: null,
+            lng: null
+          });
+
+          startGeolocation();
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    // Load and display past sessions
+    async function loadPastSessions() {
+      try {
+        const response = await fetch('/api/sessions');
+        const sessions = await response.json();
+
+        if (sessions.length === 0) {
+          elements.pastSessionsList.innerHTML = '<div class="no-sessions">No past sessions found</div>';
+          return;
+        }
+
+        elements.pastSessionsList.innerHTML = sessions.map(session => `
+          <div class="past-session-item" data-filename="${session.filename}">
+            <h4>${escapeHtml(session.name)}</h4>
+            <p>${new Date(session.createdAt).toLocaleString()}</p>
+            <div class="past-session-stats">
+              <span>${session.userCount} users</span>
+              <span>${session.markerCount} markers</span>
+            </div>
+          </div>
+        `).join('');
+
+        // Add click handlers
+        elements.pastSessionsList.querySelectorAll('.past-session-item').forEach(item => {
+          item.addEventListener('click', () => viewPastSession(item.dataset.filename));
+        });
+      } catch (e) {
+        elements.pastSessionsList.innerHTML = '<div class="no-sessions">Error loading sessions</div>';
+      }
+    }
+
+    // View a past session (read-only replay)
+    async function viewPastSession(filename) {
+      try {
+        const response = await fetch(`/api/sessions/${filename}`);
+        const session = await response.json();
+
+        state.replayMode = true;
+        state.replayData = session;
+
+        // Hide modals
+        elements.pastSessionsModal.classList.add('hidden');
+        elements.welcomeModal.classList.add('hidden');
+
+        // Show replay banner
+        elements.replayBannerText.textContent = `Viewing: ${session.name} (${new Date(session.createdAt).toLocaleDateString()})`;
+        elements.replayBanner.classList.remove('hidden');
+
+        // Show replay controls
+        elements.replayControls.classList.remove('hidden');
+
+        // Clear map
+        Object.values(state.userMarkers).forEach(m => {
+          state.map.removeLayer(m.icon);
+          if (m.label) state.map.removeLayer(m.label);
+        });
+        Object.values(state.userPolylines).forEach(p => state.map.removeLayer(p));
+        Object.values(state.markers).forEach(m => state.map.removeLayer(m));
+        state.userMarkers = {};
+        state.userPolylines = {};
+        state.markers = {};
+
+        // Display users and paths
+        state.users = session.users.map((u, i) => ({
+          id: `replay_user_${i}`,
+          name: u.name,
+          color: u.color,
+          path: u.path,
+          lat: u.path && u.path.length > 0 ? u.path[u.path.length - 1].lat : null,
+          lng: u.path && u.path.length > 0 ? u.path[u.path.length - 1].lng : null,
+          tracking: true
+        }));
+
+        updateUserMarkers();
+
+        // Display markers
+        session.markers.forEach(marker => {
+          addMarkerToMap({
+            ...marker,
+            id: `replay_marker_${marker.id}`
+          });
+        });
+
+        // Fit bounds to show all data
+        const bounds = [];
+        session.users.forEach(u => {
+          if (u.path) {
+            u.path.forEach(p => bounds.push([p.lat, p.lng]));
+          }
+        });
+        session.markers.forEach(m => bounds.push([m.lat, m.lng]));
+
+        if (bounds.length > 0) {
+          state.map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+      } catch (e) {
+        alert('Error loading session');
+      }
+    }
+
+    // End current session
+    function endSession() {
+      if (confirm('Are you sure you want to end this session? This will save all data and disconnect all users.')) {
+        state.socket.emit('session:end');
+      }
+    }
+
+    // Initialize app
+    function init() {
+      initMap();
+      initIconPicker();
+
+      // Check for saved username
+      const savedName = localStorage.getItem('collaborativeMap_username');
+      if (savedName) {
+        elements.usernameInput.value = savedName;
+      }
+
+      // Event listeners for welcome modal
+      elements.createSessionBtn.addEventListener('click', () => {
+        const name = elements.usernameInput.value.trim();
+        const sessionName = elements.newSessionName.value.trim();
+        if (name) {
+          joinSession(name, true, sessionName);
+        }
+      });
+
+      elements.joinExistingBtn.addEventListener('click', () => {
+        const name = elements.usernameInput.value.trim();
+        if (name) {
+          joinSession(name, false);
+        }
+      });
+
+      elements.viewPastSessionsBtn.addEventListener('click', () => {
+        elements.pastSessionsModal.classList.remove('hidden');
+        loadPastSessions();
+      });
+
+      elements.closePastSessionsBtn.addEventListener('click', () => {
+        elements.pastSessionsModal.classList.add('hidden');
+      });
+
+      // Replay mode buttons
+      elements.exitReplayBtn.addEventListener('click', showWelcomeScreen);
+      elements.viewPastBtn.addEventListener('click', () => {
+        elements.pastSessionsModal.classList.remove('hidden');
+        loadPastSessions();
+      });
+      elements.startNewBtn.addEventListener('click', showWelcomeScreen);
+
+      // Session controls
+      elements.endSessionBtn.addEventListener('click', endSession);
+
+      // Marker controls
+      elements.addMarkerBtn.addEventListener('click', () => {
+        setAddingMarker(!state.addingMarker);
+      });
+
+      elements.confirmMarkerBtn.addEventListener('click', confirmMarker);
+      elements.cancelMarkerBtn.addEventListener('click', cancelMarker);
+
+      // Tracking controls
+      elements.trackingBtn.addEventListener('click', toggleTracking);
+      elements.clearPathBtn.addEventListener('click', clearMyPath);
+      elements.centerBtn.addEventListener('click', centerOnUser);
+
+      // Username input enter key
+      elements.usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const name = elements.usernameInput.value.trim();
+          if (name) {
+            joinSession(name, true, elements.newSessionName.value.trim());
+          }
+        }
+      });
+
+      // Check for active session on load
+      checkActiveSession();
+    }
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>
