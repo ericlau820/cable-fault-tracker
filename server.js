@@ -37,11 +37,13 @@ const colors = [
 let colorIndex = 0;
 
 // Available marker icons
-const MARKER_ICONS = ['📍', '🚩', '⭐', '❤️', '🔥', '💡', '🎯', '⚠️', '✅', '❌', '🏠', '☕', '🅿️', '⛽', '🏥'];
+const MARKER_ICONS = ['➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫️', '⚠️', '❌', '⭕️', '⛔️', '🚐', '🏠', '✅', '❎', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣'];
 
 // Path tracking settings
-const MAX_PATH_POINTS = 100; // Maximum points to keep per user
 const MIN_DISTANCE_THRESHOLD = 5; // Minimum distance in meters to record a new point
+
+// Track users by name within session for color reuse
+const userNameColorMap = new Map(); // name -> color
 
 function getNextColor() {
   const color = colors[colorIndex % colors.length];
@@ -68,7 +70,8 @@ function createSession(name) {
     name: name,
     createdAt: new Date().toISOString(),
     users: new Map(),
-    markers: new Map()
+    markers: new Map(),
+    messages: [] // Store message history
   };
   currentSession = session;
   console.log(`Session created: ${session.name} (${session.id})`);
@@ -190,6 +193,30 @@ app.get('/api/sessions/:filename', (req, res) => {
   }
 });
 
+app.delete('/api/sessions/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filepath = path.join(SESSIONS_DIR, filename);
+  
+  // Security check - only allow .json files
+  if (!filename.endsWith('.json')) {
+    return res.status(400).json({ error: 'Invalid file type' });
+  }
+  
+  // Check if file exists
+  if (!fs.existsSync(filepath)) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  
+  try {
+    fs.unlinkSync(filepath);
+    console.log(`Session deleted: ${filename}`);
+    res.json({ success: true, message: 'Session deleted' });
+  } catch (err) {
+    console.error(`Error deleting session ${filename}:`, err);
+    res.status(500).json({ error: 'Failed to delete session' });
+  }
+});
+
 app.get('/api/current-session', (req, res) => {
   if (currentSession) {
     res.json({
@@ -285,13 +312,39 @@ io.on('connection', (socket) => {
 
   // Handle user joining
   socket.on('user:join', (data) => {
+    // Check if user with same name already exists in this session
+    let userColor;
+    let previousPath = [];
+
+    if (userNameColorMap.has(data.name)) {
+      // Reuse existing color for this username
+      userColor = userNameColorMap.get(data.name);
+      console.log(`Reusing color ${userColor} for returning user: ${data.name}`);
+
+      // Find previous user data with same name to get their path
+      if (currentSession && currentSession.users) {
+        for (const [sid, u] of currentSession.users) {
+          if (u.name === data.name && u.path) {
+            previousPath = [...u.path];
+            console.log(`Restoring ${previousPath.length} path points for: ${data.name}`);
+            break;
+          }
+        }
+      }
+    } else {
+      // Assign new color
+      userColor = getNextColor();
+      userNameColorMap.set(data.name, userColor);
+    }
+
     const user = {
       id: socket.id,
       name: data.name,
-      color: getNextColor(),
+      color: userColor,
       lat: data.lat,
       lng: data.lng,
-      path: data.lat && data.lng ? [{ lat: data.lat, lng: data.lng, timestamp: Date.now() }] : [],
+      path: previousPath.length > 0 ? previousPath :
+        (data.lat && data.lng ? [{ lat: data.lat, lng: data.lng, timestamp: Date.now() }] : []),
       tracking: true // Auto-start tracking
     };
     users.set(socket.id, user);
@@ -299,10 +352,21 @@ io.on('connection', (socket) => {
     // Join session
     joinSession(socket.id, user);
 
-    console.log(`User joined: ${user.name} (${user.color})`);
+    console.log(`User joined: ${user.name} (${user.color}) with ${user.path.length} path points`);
 
-    // Send user their assigned info
-    socket.emit('user:assigned', { id: user.id, color: user.color, tracking: user.tracking });
+    // Send user their assigned info with full path history
+    socket.emit('user:assigned', {
+      id: user.id,
+      color: user.color,
+      tracking: user.tracking,
+      path: user.path
+    });
+
+    // Send message history to the new user
+    if (currentSession && currentSession.messages && currentSession.messages.length > 0) {
+      socket.emit('message:history', currentSession.messages);
+      console.log(`Sent ${currentSession.messages.length} message(s) history to: ${user.name}`);
+    }
 
     // Broadcast updated user list and session info
     broadcastUsers();
@@ -330,11 +394,7 @@ io.on('connection', (socket) => {
             lng: position.lng,
             timestamp: Date.now()
           });
-
-          // Limit path length
-          if (user.path.length > MAX_PATH_POINTS) {
-            user.path = user.path.slice(-MAX_PATH_POINTS);
-          }
+          // No path limit - keep all points until session ends
         }
       }
 
@@ -364,10 +424,19 @@ io.on('connection', (socket) => {
         label: data.label || '',
         createdBy: user.name,
         color: user.color,
-        icon: data.icon || '📍'
+        icon: data.icon || '📍',
+        photo: data.photo || null,
+        createdAt: Date.now()
       };
       markers.set(marker.id, marker);
+      
+      // Store in current session
+      if (currentSession) {
+        currentSession.markers.set(marker.id, marker);
+      }
+      
       io.emit('marker:added', marker);
+      console.log(`Marker added by ${user.name} at (${data.lat}, ${data.lng})${data.photo ? ' with photo' : ''}`);
     }
   });
 
@@ -393,12 +462,35 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const user = users.get(socket.id);
     if (user) {
-      console.log(`User disconnected: ${user.name}`);
-      users.delete(socket.id);
-      leaveSession(socket.id);
-      broadcastUsers();
-      broadcastSessionInfo();
+    console.log(`User disconnected: ${user.name}`);
+    users.delete(socket.id);
+    leaveSession(socket.id);
+    broadcastUsers();
+    broadcastSessionInfo();
     }
+  });
+
+  // Handle message add
+  socket.on('message:add', (message) => {
+    const user = users.get(socket.id);
+    if (user && currentSession) {
+    const msg = {
+      id: message.id || `msg_${Date.now()}`,
+      text: message.text,
+      author: user.name,
+      color: user.color,
+      timestamp: Date.now()
+    };
+    // Store message in session history
+    currentSession.messages.push(msg);
+    io.emit('message:new', msg);
+  }
+  });
+
+  // Handle message request
+  socket.on('message:getHistory', () => {
+    // Return message history (if stored)
+    socket.emit('message:history', []);
   });
 });
 

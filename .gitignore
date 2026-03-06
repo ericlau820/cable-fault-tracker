@@ -1,4 +1,26 @@
+# Dependencies
 node_modules/
+
+# Session data
 sessions/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+*.tmp
+*.swp
+*~
