@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,10 +26,8 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 // API to upload photo
-app.post('/api/upload-photo', (req, res) => {
+app.post('/api/upload-photo', async (req, res) => {
   console.log('=== Photo Upload Request ===');
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Body keys:', Object.keys(req.body));
   console.log('Photo length:', req.body.photo ? req.body.photo.length : 'undefined');
 
   try {
@@ -40,27 +39,48 @@ app.post('/api/upload-photo', (req, res) => {
     }
 
     // Extract base64 data
-    const matches = photo.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+    const matches = photo.match(/^data:image\/(png|jpeg|jpg|heic|webp);base64,(.+)$/);
     if (!matches) {
       console.error('❌ Invalid photo format, starts with:', photo.substring(0, 50));
       return res.status(400).json({ error: 'Invalid photo format' });
     }
 
     const imageData = matches[2];
-    const buffer = Buffer.from(imageData, 'base64');
+    const originalBuffer = Buffer.from(imageData, 'base64');
+
+    console.log(`Original photo size: ${Math.round(originalBuffer.length / 1024)}KB`);
 
     // Generate unique filename
     const filename = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
     const filepath = path.join(UPLOADS_DIR, filename);
 
-    // Save photo
-    fs.writeFileSync(filepath, buffer);
+    // Compress and convert to JPG using sharp
+    const compressedBuffer = await sharp(originalBuffer)
+      .resize(1920, 1920, { // Max dimensions
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({
+        quality: 85, // Good quality compression
+        progressive: true,
+        mozjpeg: true // Better compression
+      })
+      .toBuffer();
+
+    // Save compressed photo
+    fs.writeFileSync(filepath, compressedBuffer);
 
     // Return URL
     const photoUrl = `/uploads/photos/${filename}`;
-    console.log(`✅ Photo uploaded: ${filename} (${Math.round(buffer.length / 1024)}KB)`);
+    const savedSize = Math.round(compressedBuffer.length / 1024);
+    const compressionRatio = ((1 - compressedBuffer.length / originalBuffer.length) * 100).toFixed(1);
 
-    res.json({ url: photoUrl });
+    console.log(`✅ Photo uploaded: ${filename}`);
+    console.log(`   Original: ${Math.round(originalBuffer.length / 1024)}KB`);
+    console.log(`   Compressed: ${savedSize}KB`);
+    console.log(`   Saved: ${compressionRatio}%`);
+
+    res.json({ url: photoUrl, size: savedSize });
   } catch (error) {
     console.error('❌ Error uploading photo:', error);
     res.status(500).json({ error: 'Failed to upload photo', details: error.message });
