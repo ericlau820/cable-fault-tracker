@@ -2154,21 +2154,35 @@
       try {
         const response = await fetch('/api/sessions');
         const sessions = await response.json();
-        
+
         if (sessions && sessions.length > 0) {
           elements.activeSessionSection.classList.remove('hidden');
-          elements.activeSessionsList.innerHTML = sessions.map(s => `
-            <div class="session-item" data-session-id="${s.id}">
-              <div class="session-info">
-                <h4>${escapeHtml(s.name)}</h4>
-                <p>Created: ${new Date(s.createdAt).toLocaleString()}</p>
-                <p>${s.userCount} users • ${s.markerCount} markers</p>
-              </div>
-              <button class="join-session-btn" data-session-id="${s.id}">Join</button>
+          elements.activeSessionInfo.innerHTML = `
+            <h3>Active Sessions (${sessions.length})</h3>
+            <div class="sessions-list">
+              ${sessions.map(s => `
+                <div class="session-item" data-session-id="${s.id}">
+                  <div class="session-info">
+                    <h4>${escapeHtml(s.name)}</h4>
+                    <p>Created: ${new Date(s.createdAt).toLocaleString()}</p>
+                    <p>${s.userCount} users • ${s.markerCount} markers</p>
+                  </div>
+                  <button class="join-session-btn" data-session-id="${s.id}">Join</button>
+                </div>
+              `).join('')}
             </div>
-          `).join('');
+          `;
+
+          // Add click handlers for join buttons
+          document.querySelectorAll('.join-session-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const sessionId = btn.dataset.sessionId;
+              joinSpecificSession(sessionId);
+            });
+          });
         } else {
-          elements.activeSessionsList.innerHTML = '<div class="no-sessions">No active sessions</div>';
+          elements.activeSessionSection.classList.add('hidden');
         }
       } catch (e) {
         console.error('Error checking active sessions:', e);
@@ -2176,12 +2190,56 @@
       }
     }
 
-    // Socket event listeners
-    if (state.socket) {
-      state.socket.on('sessions:list', (sessionsList) => {
-        checkActiveSessions();
-      });
-    } }
+    // Join specific session
+    function joinSpecificSession(sessionId) {
+      const name = elements.usernameInput.value.trim();
+      if (!name) {
+        alert('Please enter your name first');
+        return;
+      }
+
+      // Initialize socket if not already
+      if (!state.socket) {
+        initSocket();
+      }
+
+      // Save username
+      localStorage.setItem('collaborativeMap_username', name);
+
+      // Hide modal, show controls
+      elements.welcomeModal.classList.add('hidden');
+      elements.sidebar.classList.remove('hidden');
+      elements.controls.classList.remove('hidden');
+      elements.controls.classList.remove('collapsed');
+      elements.trackingIndicator.classList.remove('hidden');
+
+      // Set user state
+      state.user = { name };
+
+      // Get position then join
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          state.socket.emit('user:join', {
+            name: name,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+
+          state.user.lat = position.coords.latitude;
+          state.user.lng = position.coords.longitude;
+          state.map.setView([position.coords.latitude, position.coords.longitude], 15);
+
+          // Join specific session
+          state.socket.emit('session:join', sessionId);
+
+          startGeolocation();
+        },
+        (error) => {
+          state.socket.emit('user:join', { name, lat: null, lng: null });
+          state.socket.emit('session:join', sessionId);
+        }
+      );
+    }
 
     // Show welcome screen
     function showWelcomeScreen() {

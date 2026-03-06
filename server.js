@@ -168,59 +168,81 @@ function saveSession(sessionId) {
 function saveAllSessions() {
   try {
     sessions.forEach((session, sessionId) => {
-    saveSession(sessionId);
-  });
-  console.log(`Saved ${sessions.size} sessions`);
+      saveSession(sessionId);
+    });
+    console.log(`Saved ${sessions.size} sessions`);
   } catch (err) {
     console.error('Error saving all sessions:', err);
   }
 }
 
-function loadActiveSession() {
+function loadAllSessions() {
   try {
-    if (!fs.existsSync(ACTIVE_SESSION_FILE)) {
-      console.log('No active session file found');
-      return null;
+    if (!fs.existsSync(SESSIONS_DIR)) {
+      console.log('Sessions directory does not exist');
+      return;
     }
 
-    const data = JSON.parse(fs.readFileSync(ACTIVE_SESSION_FILE, 'utf8'));
-    console.log(`Loading active session: ${data.name}`);
+    const files = fs.readdirSync(SESSIONS_DIR).filter(f =>
+      f.endsWith('.json') &&
+      !f.includes('session_2026') && // Skip archived sessions
+      !f.includes('session_2025') &&
+      !f.includes('session_2024')
+    );
 
-    // Restore session with Maps
-    currentSession = {
-      id: data.id,
-      name: data.name,
-      createdAt: data.createdAt,
-      users: new Map(),
-      markers: new Map(),
-      messages: data.messages || []
-    };
+    sessions.clear();
+    let loaded = 0;
 
-    // Restore users to userHistory (they will reconnect with new socket IDs)
-    if (data.users) {
-      data.users.forEach(user => {
-        userNameColorMap.set(user.name, user.color);
-        userHistory.set(user.name, {
-          color: user.color,
-          path: user.path || [],
-          tracking: user.tracking !== undefined ? user.tracking : true
-        });
-      });
-    }
+    files.forEach(file => {
+      try {
+        const filepath = path.join(SESSIONS_DIR, file);
+        const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
 
-    // Restore markers to Map
-    if (data.markers) {
-      data.markers.forEach(marker => {
-        currentSession.markers.set(marker.id, marker);
-        markers.set(marker.id, marker);
-      });
-    }
+        // Skip ended sessions
+        if (data.endedAt) {
+          return;
+        }
 
-    console.log(`Session restored: ${currentSession.name} (${currentSession.markers.size} markers, ${userHistory.size} users in history)`);
-    return currentSession;
+        // Restore session
+        const session = {
+          id: data.id,
+          name: data.name,
+          createdAt: data.createdAt,
+          users: new Map(),
+          markers: new Map(),
+          messages: data.messages || []
+        };
+
+        // Restore users to userHistory (they will reconnect with new socket IDs)
+        if (data.users) {
+          data.users.forEach(u => {
+            userHistory.set(u.name, {
+              color: u.color,
+              path: u.path || [],
+              tracking: u.tracking !== undefined ? u.tracking : true
+            });
+            userNameColorMap.set(u.name, u.color);
+          });
+        }
+
+        // Restore markers
+        if (data.markers) {
+          data.markers.forEach(marker => {
+            session.markers.set(marker.id, marker);
+          });
+        }
+
+        sessions.set(session.id, session);
+        loaded++;
+        console.log(`Session restored: ${session.name} (${session.markers.size} markers, ${data.users ? data.users.length : 0} users in history)`);
+      } catch (err) {
+        console.error(`Error loading session ${file}:`, err);
+      }
+    });
+
+    console.log(`Loaded ${loaded} active sessions`);
   } catch (err) {
-    console.error('Error loading active session:', err);
-    return null;
+    console.error('Error loading sessions:', err);
   }
 }
 
@@ -712,13 +734,15 @@ server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Sessions directory: ${SESSIONS_DIR}`);
 
-  // Load active session on server start
-  loadActiveSession();
+  // Load all active sessions on server start
+  loadAllSessions();
 
-  // Save active session every 30 seconds
+  // Save all sessions every 30 seconds
   setInterval(() => {
-    if (currentSession) {
-      saveActiveSession();
+    if (sessions.size > 0) {
+      saveAllSessions();
     }
   }, 30000);
+
+  console.log(`Multi-session server ready (${sessions.size} sessions loaded)`);
 });
