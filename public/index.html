@@ -2294,8 +2294,15 @@
     // View a past session (read-only replay)
     async function viewPastSession(filename) {
       try {
+        console.log('Loading session:', filename);
         const response = await fetch(`/api/sessions/${filename}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const session = await response.json();
+        console.log('Session loaded:', session);
 
         state.replayMode = true;
         state.replayData = session;
@@ -2337,7 +2344,9 @@
         updateUserMarkers();
 
         // Display markers
-        session.markers.forEach(marker => {
+        console.log('Loading markers:', session.markers.length);
+        session.markers.forEach((marker, index) => {
+          console.log(`Marker ${index}:`, marker);
           addMarkerToMap({
             ...marker,
             id: `replay_marker_${marker.id}`
@@ -2358,7 +2367,8 @@
         }
 
       } catch (e) {
-        alert('Error loading session');
+        console.error('Error loading session:', e);
+        alert('Error loading session: ' + e.message);
       }
     }
 
