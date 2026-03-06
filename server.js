@@ -120,8 +120,8 @@ function endSession() {
     });
   });
 
-  // Collect all markers
-  markers.forEach((marker, markerId) => {
+  // Collect all markers from session (not global markers)
+  session.markers.forEach((marker, markerId) => {
     sessionData.markers.push(marker);
   });
 
