@@ -1249,6 +1249,7 @@
       map: null,
       users: [],
       markers: {},
+      markerData: {}, // Store marker data including photos
       userMarkers: {},
       userPolylines: {},
       messages: [],
@@ -1609,18 +1610,21 @@
         icon: createSharedMarkerIcon(marker.icon || '📍', marker.color)
       }).addTo(state.map);
 
+      // Store marker data (including photo)
+      state.markerData[marker.id] = marker;
+
       // Build popup content
       let popupContent = `
         <div class="marker-popup">
           <h4>${marker.icon || '📍'} ${marker.label ? escapeHtml(marker.label) : ''}</h4>
           <p style="color: ${marker.color}; font-weight: 600;">${escapeHtml(marker.createdBy)}</p>
       `;
-      
+
       // Add photo if exists
       if (marker.photo) {
         popupContent += `<img src="${marker.photo}" class="photo-in-popup" alt="Fault photo" style="cursor: pointer;" onclick="window.openPhoto('${marker.id}')">`;
       }
-      
+
       if (state.replayMode) {
         popupContent += `</div>`;
       } else {
@@ -1636,17 +1640,18 @@
 
     // Global photo viewer
     window.openPhoto = function(markerId) {
-      const marker = state.markers[markerId];
-      if (marker && marker.photo) {
+      const markerData = state.markerData[markerId];
+      if (markerData && markerData.photo) {
         const win = window.open('', '_blank');
         win.document.write(`
           <html>
             <head><title>Fault Photo</title></head>
             <body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #2c3e50;">
-              <img src="${marker.photo}" style="max-width: 100%; max-height: 100vh;">
+              <img src="${markerData.photo}" style="max-width: 100%; max-height: 100vh;">
             </body>
           </html>
         `);
+        win.document.close();
       }
     };
 
@@ -1655,6 +1660,10 @@
       if (state.markers[markerId]) {
         state.map.removeLayer(state.markers[markerId]);
         delete state.markers[markerId];
+      }
+      // Also remove marker data
+      if (state.markerData[markerId]) {
+        delete state.markerData[markerId];
       }
     }
 
@@ -2119,6 +2128,7 @@
       state.user = null;
       state.users = [];
       state.markers = {};
+      state.markerData = {};
       state.userMarkers = {};
       state.userPolylines = {};
       state.currentSession = null;
@@ -2137,6 +2147,7 @@
       state.userMarkers = {};
       state.userPolylines = {};
       state.markers = {};
+      state.markerData = {};
 
       // Hide UI elements
       elements.sidebar.classList.add('hidden');
@@ -2168,6 +2179,7 @@
       // Clear all shared markers
       Object.values(state.markers).forEach(m => state.map.removeLayer(m));
       state.markers = {};
+      state.markerData = {};
 
       // Clear user list
       state.users = [];
@@ -2309,6 +2321,7 @@
         state.userMarkers = {};
         state.userPolylines = {};
         state.markers = {};
+        state.markerData = {};
 
         // Display users and paths
         state.users = session.users.map((u, i) => ({
