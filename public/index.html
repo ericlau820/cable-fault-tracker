@@ -1511,24 +1511,29 @@
       // Upload photo if selected
       if (state.pendingPhoto) {
         try {
-          console.log('Uploading photo...');
+          console.log('=== Starting photo upload ===');
+          console.log('Photo size:', state.pendingPhoto.length, 'bytes');
+
           const response = await fetch('/api/upload-photo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ photo: state.pendingPhoto })
           });
 
+          console.log('Upload response status:', response.status);
+
           if (response.ok) {
             const data = await response.json();
-            markerData.photo = data.url; // Use URL instead of base64
-            console.log('Photo uploaded:', data.url);
+            markerData.photo = data.url;
+            console.log('✅ Photo uploaded successfully:', data.url);
           } else {
-            console.error('Failed to upload photo');
-            alert('Failed to upload photo. Marker will be added without photo.');
+            const errorText = await response.text();
+            console.error('❌ Upload failed:', response.status, errorText);
+            alert('Failed to upload photo (' + response.status + '). Marker will be added without photo.');
           }
         } catch (error) {
-          console.error('Error uploading photo:', error);
-          alert('Error uploading photo. Marker will be added without photo.');
+          console.error('❌ Network error uploading photo:', error);
+          alert('Network error uploading photo. Marker will be added without photo.\n\nError: ' + error.message);
         }
       }
 

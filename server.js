@@ -26,16 +26,23 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 // API to upload photo
 app.post('/api/upload-photo', (req, res) => {
+  console.log('=== Photo Upload Request ===');
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body keys:', Object.keys(req.body));
+  console.log('Photo length:', req.body.photo ? req.body.photo.length : 'undefined');
+
   try {
     const { photo } = req.body;
 
     if (!photo) {
+      console.error('❌ No photo provided');
       return res.status(400).json({ error: 'No photo provided' });
     }
 
     // Extract base64 data
     const matches = photo.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
     if (!matches) {
+      console.error('❌ Invalid photo format, starts with:', photo.substring(0, 50));
       return res.status(400).json({ error: 'Invalid photo format' });
     }
 
@@ -51,12 +58,12 @@ app.post('/api/upload-photo', (req, res) => {
 
     // Return URL
     const photoUrl = `/uploads/photos/${filename}`;
-    console.log(`Photo uploaded: ${filename} (${Math.round(buffer.length / 1024)}KB)`);
+    console.log(`✅ Photo uploaded: ${filename} (${Math.round(buffer.length / 1024)}KB)`);
 
     res.json({ url: photoUrl });
   } catch (error) {
-    console.error('Error uploading photo:', error);
-    res.status(500).json({ error: 'Failed to upload photo' });
+    console.error('❌ Error uploading photo:', error);
+    res.status(500).json({ error: 'Failed to upload photo', details: error.message });
   }
 });
 
