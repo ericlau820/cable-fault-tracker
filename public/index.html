@@ -973,26 +973,29 @@
 
     .photo-preview {
       margin-top: 8px;
-      position: relative;
     }
 
     .photo-preview img {
       width: 100%;
       border-radius: 8px;
+      display: block;
     }
 
     .photo-preview-remove {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      background: rgba(231, 76, 60, 0.9);
+      margin-top: 8px;
+      background: #e74c3c;
       color: white;
       border: none;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
+      border-radius: 4px;
+      padding: 8px 16px;
       cursor: pointer;
       font-size: 12px;
+      width: 100%;
+      transition: all 0.2s;
+    }
+
+    .photo-preview-remove:hover {
+      background: #c0392b;
     }
 
     .photo-in-popup {
@@ -1126,7 +1129,7 @@
           <button type="button" id="photoUploadBtn" class="photo-upload-btn">📷 Choose Photo or Take Photo</button>
           <div id="photoPreview" class="photo-preview hidden">
             <img id="photoPreviewImg" src="" alt="Preview">
-            <button id="removePhotoBtn" class="photo-preview-remove" type="button">✕</button>
+            <button id="removePhotoBtn" class="photo-preview-remove" type="button">🗑️ Remove Photo</button>
           </div>
         </div>
 
