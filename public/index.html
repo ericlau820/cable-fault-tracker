@@ -840,7 +840,6 @@
       margin-bottom: 10px;
       cursor: pointer;
       transition: all 0.2s;
-      position: relative;
     }
 
     .past-session-item:hover {
@@ -852,7 +851,6 @@
       font-size: 15px;
       color: #2c3e50;
       margin-bottom: 6px;
-      padding-right: 70px;
     }
 
     .past-session-item p {
@@ -865,30 +863,6 @@
       display: flex;
       gap: 16px;
       margin-top: 8px;
-    }
-
-    .past-session-delete {
-      position: absolute;
-      top: 50%;
-      right: 10px;
-      transform: translateY(-50%);
-      background: transparent;
-      color: #95a5a6;
-      border: none;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
-
-    .past-session-delete:hover {
-      color: #e74c3c;
-      background: #f8f9fa;
     }
 
     /* Measurement Display */
@@ -1386,8 +1360,8 @@
         scrollWheelZoom: true,
         touchZoom: true,
         doubleClickZoom: true,
-        zoom: 2
-      }).setView([0, 0], 2);
+        zoom: 15
+      }).setView([0, 0], 15);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
@@ -1396,6 +1370,25 @@
 
       // Handle map clicks
       state.map.on('click', handleMapClick);
+
+      // Try to get user's location for initial view
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            state.map.setView([latitude, longitude], 15);
+          },
+          (error) => {
+            console.log('Could not get initial location, using default view');
+            // Keep default view [0, 0]
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 60000
+          }
+        );
+      }
     }
 
     // Create colored marker icon
@@ -1474,13 +1467,13 @@
     // Handle map click
     function handleMapClick(e) {
       if (state.replayMode) return;
-      
-      // Handle measurement mode
-      if (state.map._container.style.cursor === 'crosshair' && state.measurePoints.length >= 0) {
+
+      // Handle measurement mode - only if measuring is active
+      if (state.measuring) {
         handleMapClickForMeasurement(e);
         return;
       }
-      
+
       if (!state.addingMarker) return;
 
       state.pendingMarkerPosition = { lat: e.latlng.lat, lng: e.latlng.lng };
@@ -1775,13 +1768,12 @@
     // ========== MEASUREMENT FUNCTIONS ==========
     
     function toggleMeasurement() {
-      const isMeasuring = state.measurePoints.length > 0 || state.map._container.style.cursor === 'crosshair';
-      
-      if (isMeasuring) {
+      if (state.measuring) {
         // Stop measuring
         clearMeasurement();
       } else {
         // Start measuring
+        state.measuring = true;
         state.map._container.style.cursor = 'crosshair';
         elements.measureBtn.classList.add('btn-measure-active');
         elements.measureBtn.textContent = '📏 Measuring...';
@@ -1792,11 +1784,11 @@
     }
 
     function handleMapClickForMeasurement(e) {
-      if (state.map._container.style.cursor !== 'crosshair') return;
-      
+      if (!state.measuring) return;
+
       const point = e.latlng;
       state.measurePoints.push(point);
-      
+
       // Add marker
       const marker = L.circleMarker([point.lat, point.lng], {
         radius: 6,
@@ -1805,7 +1797,7 @@
         weight: 2
       }).addTo(state.map);
       state.measureMarkers.push(marker);
-      
+
       // Update polyline
       if (state.measurePoints.length > 1) {
         if (state.measurePolyline) {
@@ -1817,7 +1809,7 @@
           dashArray: '10, 10'
         }).addTo(state.map);
       }
-      
+
       // Update display
       updateMeasurementDisplay();
     }
@@ -1855,17 +1847,18 @@
       // Clear markers
       state.measureMarkers.forEach(m => state.map.removeLayer(m));
       state.measureMarkers = [];
-      
+
       // Clear polyline
       if (state.measurePolyline) {
         state.map.removeLayer(state.measurePolyline);
         state.measurePolyline = null;
       }
-      
+
       // Clear points
       state.measurePoints = [];
-      
-      // Reset UI
+
+      // Reset measuring state
+      state.measuring = false;
       state.map._container.style.cursor = '';
       elements.measureBtn.classList.remove('btn-measure-active');
       elements.measureBtn.textContent = '📏 Measure';
@@ -2265,7 +2258,6 @@
 
         elements.pastSessionsList.innerHTML = sessions.map(session => `
           <div class="past-session-item" data-filename="${session.filename}">
-            <button class="past-session-delete" data-filename="${session.filename}" title="Delete">✕</button>
             <h4>${escapeHtml(session.name)}</h4>
             <p>${new Date(session.createdAt).toLocaleString()}</p>
             <div class="past-session-stats">
@@ -2277,19 +2269,8 @@
 
         // Add click handlers for viewing
         elements.pastSessionsList.querySelectorAll('.past-session-item').forEach(item => {
-          item.addEventListener('click', (e) => {
-            // Don't trigger view if clicking delete button
-            if (!e.target.classList.contains('past-session-delete')) {
-              viewPastSession(item.dataset.filename);
-            }
-          });
-        });
-
-        // Add delete handlers
-        elements.pastSessionsList.querySelectorAll('.past-session-delete').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deletePastSession(btn.dataset.filename, btn.closest('.past-session-item'));
+          item.addEventListener('click', () => {
+            viewPastSession(item.dataset.filename);
           });
         });
       } catch (e) {
@@ -2298,38 +2279,6 @@
     }
 
     // Delete a past session
-    async function deletePastSession(filename, itemElement) {
-      if (!confirm('Are you sure you want to delete this session? This cannot be undone.')) {
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/sessions/${filename}`, {
-          method: 'DELETE'
-        });
-
-        if (response.ok) {
-          // Remove the item from the list with animation
-          itemElement.style.transition = 'all 0.3s';
-          itemElement.style.opacity = '0';
-          itemElement.style.transform = 'translateX(20px)';
-          setTimeout(() => {
-            itemElement.remove();
-            // Check if list is now empty
-            if (elements.pastSessionsList.children.length === 0) {
-              elements.pastSessionsList.innerHTML = '<div class="no-sessions">No past sessions found</div>';
-            }
-          }, 300);
-        } else {
-          const data = await response.json();
-          alert('Failed to delete session: ' + (data.error || 'Unknown error'));
-        }
-      } catch (e) {
-        console.error('Error deleting session:', e);
-        alert('Failed to delete session. Please try again.');
-      }
-    }
-
     // View a past session (read-only replay)
     async function viewPastSession(filename) {
       try {
