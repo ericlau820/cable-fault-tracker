@@ -465,14 +465,52 @@ app.get('/api/current-session', (req, res) => {
   }
 });
 
-function broadcastUsers() {
-  const usersList = Array.from(users.values());
-  io.emit('users:update', usersList);
+function broadcastUsers(sessionId) {
+  if (!sessionId) {
+    console.error('broadcastUsers called without sessionId');
+    return;
+  }
+
+  const session = sessions.get(sessionId);
+  if (!session) {
+    console.error('Session not found for broadcastUsers:', sessionId);
+    return;
+  }
+
+  // Only broadcast users in this specific session
+  const usersList = Array.from(session.users.values());
+
+  // Only send to users in this session
+  session.users.forEach((user, socketId) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+      socket.emit('users:update', usersList);
+    }
+  });
 }
 
-function broadcastMarkers() {
-  const markersList = Array.from(markers.values());
-  io.emit('markers:update', markersList);
+function broadcastMarkers(sessionId) {
+  if (!sessionId) {
+    console.error('broadcastMarkers called without sessionId');
+    return;
+  }
+
+  const session = sessions.get(sessionId);
+  if (!session) {
+    console.error('Session not found for broadcastMarkers:', sessionId);
+    return;
+  }
+
+  // Only broadcast markers in this specific session
+  const markersList = Array.from(session.markers.values());
+
+  // Only send to users in this session
+  session.users.forEach((user, socketId) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+      socket.emit('markers:update', markersList);
+    }
+  });
 }
 
 function broadcastIcons() {
@@ -593,8 +631,15 @@ io.on('connection', (socket) => {
     };
     users.set(socket.id, user);
 
-    // Join session
-    joinSession(socket.id, user);
+    // Auto-join first available session or create default
+    let sessionId = sessions.size > 0 ? sessions.keys().next().value : null;
+
+    if (!sessionId) {
+      const defaultSession = createSession('Default Session');
+      sessionId = defaultSession.id;
+    }
+
+    joinSession(socket.id, user, sessionId);
 
     console.log(`User joined: ${user.name} (${user.color}) with ${user.path.length} path points`);
 
@@ -607,22 +652,23 @@ io.on('connection', (socket) => {
     });
 
     // Send message history to the new user
-    const sessionId = userSessions.get(socket.id);
     const session = sessions.get(sessionId);
     if (session && session.messages && session.messages.length > 0) {
       socket.emit('message:history', session.messages);
       console.log(`Sent ${session.messages.length} message(s) history to: ${user.name}`);
     }
 
-    // Broadcast updated user list and session info
-    broadcastUsers();
+    // Broadcast updated user list and session info (session-specific)
+    broadcastUsers(sessionId);
     broadcastSessionInfo();
   });
 
   // Handle position updates
   socket.on('user:position', (position) => {
     const user = users.get(socket.id);
-    if (user) {
+    const sessionId = userSessions.get(socket.id);
+
+    if (user && sessionId) {
       const oldLat = user.lat;
       const oldLng = user.lng;
 
@@ -644,17 +690,19 @@ io.on('connection', (socket) => {
         }
       }
 
-      broadcastUsers();
+      broadcastUsers(sessionId);
     }
   });
 
   // Handle tracking toggle
   socket.on('user:toggleTracking', () => {
     const user = users.get(socket.id);
-    if (user) {
+    const sessionId = userSessions.get(socket.id);
+
+    if (user && sessionId) {
       user.tracking = !user.tracking;
       socket.emit('user:trackingChanged', user.tracking);
-      broadcastUsers();
+      broadcastUsers(sessionId);
       console.log(`Tracking ${user.tracking ? 'started' : 'stopped'} for: ${user.name}`);
     }
   });
@@ -662,7 +710,10 @@ io.on('connection', (socket) => {
   // Handle adding markers
   socket.on('marker:add', (data) => {
     const user = users.get(socket.id);
-    if (user) {
+    const sessionId = userSessions.get(socket.id);
+    const session = sessions.get(sessionId);
+
+    if (user && session) {
       const marker = {
         id: `marker_${Date.now()}_${socket.id}`,
         lat: data.lat,
@@ -675,34 +726,38 @@ io.on('connection', (socket) => {
         createdAt: Date.now()
       };
       markers.set(marker.id, marker);
+      session.markers.set(marker.id, marker);
+      saveSession(sessionId);
 
-      // Store in user's session
-      const sessionId = userSessions.get(socket.id);
-      const session = sessions.get(sessionId);
-      if (session) {
-        session.markers.set(marker.id, marker);
-        saveSession(sessionId);
-      }
-
-      io.emit('marker:added', marker);
+      // Broadcast to users in this session only
+      broadcastMarkers(sessionId);
       console.log(`Marker added by ${user.name} at (${data.lat}, ${data.lng})${data.photo ? ' with photo' : ''}`);
     }
   });
 
   // Handle removing markers
   socket.on('marker:remove', (markerId) => {
-    if (markers.has(markerId)) {
+    const sessionId = userSessions.get(socket.id);
+    const session = sessions.get(sessionId);
+
+    if (session && session.markers.has(markerId)) {
+      session.markers.delete(markerId);
       markers.delete(markerId);
-      io.emit('marker:removed', markerId);
+      saveSession(sessionId);
+
+      // Broadcast to users in this session only
+      broadcastMarkers(sessionId);
     }
   });
 
   // Handle path clearing
   socket.on('user:clearPath', () => {
     const user = users.get(socket.id);
-    if (user) {
+    const sessionId = userSessions.get(socket.id);
+
+    if (user && sessionId) {
       user.path = user.lat && user.lng ? [{ lat: user.lat, lng: user.lng, timestamp: Date.now() }] : [];
-      broadcastUsers();
+      broadcastUsers(sessionId);
       console.log(`Path cleared for: ${user.name}`);
     }
   });
@@ -710,12 +765,19 @@ io.on('connection', (socket) => {
   // Handle disconnect
   socket.on('disconnect', () => {
     const user = users.get(socket.id);
+    const sessionId = userSessions.get(socket.id);
+
     if (user) {
-    console.log(`User disconnected: ${user.name}`);
-    users.delete(socket.id);
-    leaveSession(socket.id);
-    broadcastUsers();
-    broadcastSessionInfo();
+      console.log(`User disconnected: ${user.name}`);
+      users.delete(socket.id);
+      leaveSession(socket.id);
+
+      // Only broadcast to users in the same session
+      if (sessionId) {
+        broadcastUsers(sessionId);
+      }
+
+      broadcastSessionInfo();
     }
   });
 
