@@ -2614,8 +2614,19 @@
 
     // End current session
     function endSession() {
+      console.log('endSession called');
+      console.log('state.currentSession:', state.currentSession);
+
+      if (!state.currentSession || !state.currentSession.id) {
+        alert('No active session to end');
+        console.error('No active session found');
+        return;
+      }
+
+      console.log('Ending session:', state.currentSession.id);
+
       if (confirm('Are you sure you want to end this session? This will save all data and disconnect all users.')) {
-        state.socket.emit('session:end');
+        state.socket.emit('session:end', state.currentSession.id);
       }
     }
 
