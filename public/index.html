@@ -1498,7 +1498,7 @@
     }
 
     // Confirm marker placement
-    function confirmMarker() {
+    async function confirmMarker() {
       if (!state.pendingMarkerPosition) return;
 
       const markerData = {
@@ -1508,9 +1508,28 @@
         icon: state.selectedIcon
       };
 
-      // Add photo if selected
+      // Upload photo if selected
       if (state.pendingPhoto) {
-        markerData.photo = state.pendingPhoto;
+        try {
+          console.log('Uploading photo...');
+          const response = await fetch('/api/upload-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photo: state.pendingPhoto })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            markerData.photo = data.url; // Use URL instead of base64
+            console.log('Photo uploaded:', data.url);
+          } else {
+            console.error('Failed to upload photo');
+            alert('Failed to upload photo. Marker will be added without photo.');
+          }
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+          alert('Error uploading photo. Marker will be added without photo.');
+        }
       }
 
       state.socket.emit('marker:add', markerData);

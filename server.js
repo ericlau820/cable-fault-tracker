@@ -10,15 +10,55 @@ const io = new Server(server);
 
 // Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase limit for photo uploads
 
 // Sessions directory
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads', 'photos');
 
-// Ensure sessions directory exists
+// Ensure directories exist
 if (!fs.existsSync(SESSIONS_DIR)) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 }
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// API to upload photo
+app.post('/api/upload-photo', (req, res) => {
+  try {
+    const { photo } = req.body;
+
+    if (!photo) {
+      return res.status(400).json({ error: 'No photo provided' });
+    }
+
+    // Extract base64 data
+    const matches = photo.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: 'Invalid photo format' });
+    }
+
+    const imageData = matches[2];
+    const buffer = Buffer.from(imageData, 'base64');
+
+    // Generate unique filename
+    const filename = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+    const filepath = path.join(UPLOADS_DIR, filename);
+
+    // Save photo
+    fs.writeFileSync(filepath, buffer);
+
+    // Return URL
+    const photoUrl = `/uploads/photos/${filename}`;
+    console.log(`Photo uploaded: ${filename} (${Math.round(buffer.length / 1024)}KB)`);
+
+    res.json({ url: photoUrl });
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    res.status(500).json({ error: 'Failed to upload photo' });
+  }
+});
 
 // In-memory storage
 const users = new Map(); // socketId -> { id, name, color, lat, lng, path: [{lat, lng, timestamp}], tracking: boolean }
