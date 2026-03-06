@@ -437,12 +437,15 @@ app.delete('/api/sessions/:filename', (req, res) => {
 });
 
 app.get('/api/current-session', (req, res) => {
-  if (currentSession) {
+  // For backward compatibility, return first active session or null
+  const firstSession = sessions.values().next().value || null;
+
+  if (firstSession) {
     res.json({
       active: true,
-      name: currentSession.name,
-      userCount: currentSession.users.size,
-      createdAt: currentSession.createdAt
+      name: firstSession.name,
+      userCount: firstSession.users.size,
+      createdAt: firstSession.createdAt
     });
   } else {
     res.json({ active: false });
@@ -480,15 +483,8 @@ io.on('connection', (socket) => {
   socket.emit('markers:init', Array.from(markers.values()));
   socket.emit('icons:list', MARKER_ICONS);
 
-  // Send current session info if exists
-  if (currentSession) {
-    socket.emit('session:info', {
-      id: currentSession.id,
-      name: currentSession.name,
-      createdAt: currentSession.createdAt,
-      userCount: currentSession.users.size
-    });
-  }
+  // Send active sessions list
+  broadcastSessionInfo();
 
   // Handle session creation
   socket.on('session:create', (sessionName) => {
@@ -598,9 +594,11 @@ io.on('connection', (socket) => {
     });
 
     // Send message history to the new user
-    if (currentSession && currentSession.messages && currentSession.messages.length > 0) {
-      socket.emit('message:history', currentSession.messages);
-      console.log(`Sent ${currentSession.messages.length} message(s) history to: ${user.name}`);
+    const sessionId = userSessions.get(socket.id);
+    const session = sessions.get(sessionId);
+    if (session && session.messages && session.messages.length > 0) {
+      socket.emit('message:history', session.messages);
+      console.log(`Sent ${session.messages.length} message(s) history to: ${user.name}`);
     }
 
     // Broadcast updated user list and session info
@@ -664,12 +662,15 @@ io.on('connection', (socket) => {
         createdAt: Date.now()
       };
       markers.set(marker.id, marker);
-      
-      // Store in current session
-      if (currentSession) {
-        currentSession.markers.set(marker.id, marker);
+
+      // Store in user's session
+      const sessionId = userSessions.get(socket.id);
+      const session = sessions.get(sessionId);
+      if (session) {
+        session.markers.set(marker.id, marker);
+        saveSession(sessionId);
       }
-      
+
       io.emit('marker:added', marker);
       console.log(`Marker added by ${user.name} at (${data.lat}, ${data.lng})${data.photo ? ' with photo' : ''}`);
     }
@@ -708,18 +709,22 @@ io.on('connection', (socket) => {
   // Handle message add
   socket.on('message:add', (message) => {
     const user = users.get(socket.id);
-    if (user && currentSession) {
-    const msg = {
-      id: message.id || `msg_${Date.now()}`,
-      text: message.text,
-      author: user.name,
-      color: user.color,
-      timestamp: Date.now()
-    };
-    // Store message in session history
-    currentSession.messages.push(msg);
-    io.emit('message:new', msg);
-  }
+    const sessionId = userSessions.get(socket.id);
+    const session = sessions.get(sessionId);
+
+    if (user && session) {
+      const msg = {
+        id: message.id || `msg_${Date.now()}`,
+        text: message.text,
+        author: user.name,
+        color: user.color,
+        timestamp: Date.now()
+      };
+      // Store message in session history
+      session.messages.push(msg);
+      saveSession(sessionId);
+      io.emit('message:new', msg);
+    }
   });
 
   // Handle message request
