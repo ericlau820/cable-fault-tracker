@@ -399,7 +399,20 @@ function loadSession(filename) {
 }
 
 // API endpoints
+// Get all active sessions (from memory)
 app.get('/api/sessions', (req, res) => {
+  const activeSessions = Array.from(sessions.values()).map(s => ({
+    id: s.id,
+    name: s.name,
+    createdAt: s.createdAt,
+    userCount: s.users.size,
+    markerCount: s.markers.size
+  }));
+  res.json(activeSessions);
+});
+
+// Get all past sessions (from files)
+app.get('/api/sessions/past', (req, res) => {
   res.json(getSavedSessions());
 });
 

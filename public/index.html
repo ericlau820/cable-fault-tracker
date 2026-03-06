@@ -2453,7 +2453,7 @@
     // Load and display past sessions
     async function loadPastSessions() {
       try {
-        const response = await fetch('/api/sessions');
+        const response = await fetch('/api/sessions/past');
         const sessions = await response.json();
 
         if (sessions.length === 0) {
