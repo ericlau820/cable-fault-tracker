@@ -16,6 +16,7 @@ app.use(express.json({ limit: '50mb' })); // Increase limit for large photo uplo
 // Sessions directory
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads', 'photos');
+const ACTIVE_SESSION_FILE = path.join(__dirname, 'active-session.json');
 
 // Ensure directories exist
 if (!fs.existsSync(SESSIONS_DIR)) {
@@ -112,6 +113,9 @@ const MIN_DISTANCE_THRESHOLD = 5; // Minimum distance in meters to record a new 
 // Track users by name within session for color reuse
 const userNameColorMap = new Map(); // name -> color
 
+// Store user history for session persistence (survives disconnects)
+const userHistory = new Map(); // name -> { color, path, tracking }
+
 function getNextColor() {
   const color = colors[colorIndex % colors.length];
   colorIndex++;
@@ -131,6 +135,80 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
 }
 
 // Session management functions
+function saveActiveSession() {
+  if (!currentSession) return;
+
+  try {
+    // Convert Maps to arrays for JSON serialization
+    const sessionData = {
+      id: currentSession.id,
+      name: currentSession.name,
+      createdAt: currentSession.createdAt,
+      users: Array.from(currentSession.users.entries()).map(([socketId, user]) => ({
+        name: user.name,
+        color: user.color,
+        path: user.path || [],
+        tracking: user.tracking
+      })),
+      markers: Array.from(currentSession.markers.values()),
+      messages: currentSession.messages || []
+    };
+
+    fs.writeFileSync(ACTIVE_SESSION_FILE, JSON.stringify(sessionData, null, 2));
+    console.log(`Active session saved: ${currentSession.name}`);
+  } catch (err) {
+    console.error('Error saving active session:', err);
+  }
+}
+
+function loadActiveSession() {
+  try {
+    if (!fs.existsSync(ACTIVE_SESSION_FILE)) {
+      console.log('No active session file found');
+      return null;
+    }
+
+    const data = JSON.parse(fs.readFileSync(ACTIVE_SESSION_FILE, 'utf8'));
+    console.log(`Loading active session: ${data.name}`);
+
+    // Restore session with Maps
+    currentSession = {
+      id: data.id,
+      name: data.name,
+      createdAt: data.createdAt,
+      users: new Map(),
+      markers: new Map(),
+      messages: data.messages || []
+    };
+
+    // Restore users to userHistory (they will reconnect with new socket IDs)
+    if (data.users) {
+      data.users.forEach(user => {
+        userNameColorMap.set(user.name, user.color);
+        userHistory.set(user.name, {
+          color: user.color,
+          path: user.path || [],
+          tracking: user.tracking !== undefined ? user.tracking : true
+        });
+      });
+    }
+
+    // Restore markers to Map
+    if (data.markers) {
+      data.markers.forEach(marker => {
+        currentSession.markers.set(marker.id, marker);
+        markers.set(marker.id, marker);
+      });
+    }
+
+    console.log(`Session restored: ${currentSession.name} (${currentSession.markers.size} markers, ${userHistory.size} users in history)`);
+    return currentSession;
+  } catch (err) {
+    console.error('Error loading active session:', err);
+    return null;
+  }
+}
+
 function createSession(name) {
   const session = {
     id: `session_${Date.now()}`,
@@ -142,6 +220,10 @@ function createSession(name) {
   };
   currentSession = session;
   console.log(`Session created: ${session.name} (${session.id})`);
+
+  // Save active session to file
+  saveActiveSession();
+
   return session;
 }
 
@@ -155,6 +237,18 @@ function joinSession(socketId, user) {
 }
 
 function leaveSession(socketId) {
+  const user = users.get(socketId);
+
+  // Save user data to history before removing (survives disconnects)
+  if (user && currentSession) {
+    userHistory.set(user.name, {
+      color: user.color,
+      path: user.path || [],
+      tracking: user.tracking
+    });
+    console.log(`Saved user history for: ${user.name} (${user.path ? user.path.length : 0} points)`);
+  }
+
   userSessions.delete(socketId);
   if (currentSession) {
     currentSession.users.delete(socketId);
@@ -203,6 +297,16 @@ function endSession() {
   // Save to file
   fs.writeFileSync(filepath, JSON.stringify(sessionData, null, 2));
   console.log(`Session saved to: ${filename}`);
+
+  // Delete active session file
+  try {
+    if (fs.existsSync(ACTIVE_SESSION_FILE)) {
+      fs.unlinkSync(ACTIVE_SESSION_FILE);
+      console.log('Active session file deleted');
+    }
+  } catch (err) {
+    console.error('Error deleting active session file:', err);
+  }
 
   // Reset session
   currentSession = null;
@@ -382,22 +486,19 @@ io.on('connection', (socket) => {
     // Check if user with same name already exists in this session
     let userColor;
     let previousPath = [];
+    let userTracking = true;
 
-    if (userNameColorMap.has(data.name)) {
-      // Reuse existing color for this username
+    if (userHistory.has(data.name)) {
+      // Restore user data from history (survives disconnects)
+      const history = userHistory.get(data.name);
+      userColor = history.color;
+      previousPath = history.path || [];
+      userTracking = history.tracking !== undefined ? history.tracking : true;
+      console.log(`Restoring user: ${data.name} (${userColor}) with ${previousPath.length} path points`);
+    } else if (userNameColorMap.has(data.name)) {
+      // Fallback: reuse color from userNameColorMap
       userColor = userNameColorMap.get(data.name);
       console.log(`Reusing color ${userColor} for returning user: ${data.name}`);
-
-      // Find previous user data with same name to get their path
-      if (currentSession && currentSession.users) {
-        for (const [sid, u] of currentSession.users) {
-          if (u.name === data.name && u.path) {
-            previousPath = [...u.path];
-            console.log(`Restoring ${previousPath.length} path points for: ${data.name}`);
-            break;
-          }
-        }
-      }
     } else {
       // Assign new color
       userColor = getNextColor();
@@ -412,7 +513,7 @@ io.on('connection', (socket) => {
       lng: data.lng,
       path: previousPath.length > 0 ? previousPath :
         (data.lat && data.lng ? [{ lat: data.lat, lng: data.lng, timestamp: Date.now() }] : []),
-      tracking: true // Auto-start tracking
+      tracking: userTracking
     };
     users.set(socket.id, user);
 
@@ -565,4 +666,14 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Sessions directory: ${SESSIONS_DIR}`);
+
+  // Load active session on server start
+  loadActiveSession();
+
+  // Save active session every 30 seconds
+  setInterval(() => {
+    if (currentSession) {
+      saveActiveSession();
+    }
+  }, 30000);
 });
