@@ -276,10 +276,10 @@ function leaveSession(socketId) {
   userSessions.delete(socketId);
 }
 
-function endSession(sessionId) {
-  const session = sessions.get(sessionId);
-  if (!session) return null;
+function endSession() {
+  if (!currentSession) return null;
 
+  const session = currentSession;
   session.endedAt = new Date().toISOString();
 
   // Prepare session data for saving
@@ -293,7 +293,7 @@ function endSession(sessionId) {
   };
 
   // Collect all user paths
-  session.users.forEach((user) => {
+  session.users.forEach((user, socketId) => {
     sessionData.users.push({
       name: user.name,
       color: user.color,
@@ -302,8 +302,8 @@ function endSession(sessionId) {
     });
   });
 
-  // Collect all markers
-  session.markers.forEach((marker) => {
+  // Collect all markers from session (not global markers)
+  session.markers.forEach((marker, markerId) => {
     sessionData.markers.push(marker);
   });
 
@@ -319,28 +319,23 @@ function endSession(sessionId) {
   fs.writeFileSync(filepath, JSON.stringify(sessionData, null, 2));
   console.log(`Session saved to: ${filename}`);
 
-  // Delete session file
-  const sessionFile = path.join(SESSIONS_DIR, `${sessionId}.json`);
+  // Delete active session file
   try {
-    if (fs.existsSync(sessionFile)) {
-      fs.unlinkSync(sessionFile);
-      console.log(`Session file deleted: ${sessionId}`);
+    if (fs.existsSync(ACTIVE_SESSION_FILE)) {
+      fs.unlinkSync(ACTIVE_SESSION_FILE);
+      console.log('Active session file deleted');
     }
   } catch (err) {
-    console.error('Error deleting session file:', err);
+    console.error('Error deleting active session file:', err);
   }
 
-  // Remove session from memory
-  sessions.delete(sessionId);
+  // Reset session
+  currentSession = null;
+  markers.clear();
+  users.clear();
+  colorIndex = 0;
 
-  // Remove all users from this session
-  userSessions.forEach((sid, socketId) => {
-    if (sid === sessionId) {
-      userSessions.delete(socketId);
-    }
-  });
-
-  return { sessionData, filename, sessionId };
+  return { sessionData, filename };
 }
 
 function getSavedSessions() {
@@ -442,13 +437,16 @@ function broadcastIcons() {
 }
 
 function broadcastSessionInfo() {
-  const sessionsList = Array.from(sessions.values()).map(s => ({
-    id: s.id,
-    name: s.name,
-    createdAt: s.createdAt,
-    userCount: s.users.size
-  }));
-  io.emit('sessions:list', sessionsList);
+  if (currentSession) {
+    io.emit('session:info', {
+      id: currentSession.id,
+      name: currentSession.name,
+      createdAt: currentSession.createdAt,
+      userCount: currentSession.users.size
+    });
+  } else {
+    io.emit('session:info', null);
+  }
 }
 
 io.on('connection', (socket) => {
@@ -470,59 +468,37 @@ io.on('connection', (socket) => {
 
   // Handle session creation
   socket.on('session:create', (sessionName) => {
-    const session = createSession(sessionName || 'New Session');
+    // End current session if exists
+    if (currentSession) {
+      endSession();
+      io.emit('session:ended');
+    }
+    createSession(sessionName || 'New Session');
     broadcastSessionInfo();
-    socket.emit('session:created', {
-      id: session.id,
-      name: session.name,
-      createdAt: session.createdAt
-    });
+    socket.emit('session:created', currentSession);
   });
 
-  // Handle session join
-  socket.on('session:join', (sessionId) => {
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return socket.emit('error', { message: 'Session not found' });
-    }
-
-    const user = users.get(socket.id);
-    if (!user) {
-      return socket.emit('error', { message: 'User not registered' });
-    }
-
-    joinSession(socket.id, user, sessionId);
-
-    socket.emit('session:joined', {
-      id: session.id,
-      name: session.name,
-      createdAt: session.createdAt
-    });
-
-    // Send current users and markers
-    const usersList = Array.from(session.users.values());
-    const markersList = Array.from(session.markers.values());
-    socket.emit('users:update', usersList);
-    socket.emit('markers:update', markersList);
-
-    // Send message history
-    if (session.messages && session.messages.length > 0) {
-      socket.emit('message:history', session.messages);
-    }
-
-    broadcastSessionInfo();
-  });
-
-  // Handle session getActive (backward compatibility)
+  // Handle session join (get active session info)
   socket.on('session:getActive', () => {
-    broadcastSessionInfo();
+    if (currentSession) {
+      socket.emit('session:active', {
+        id: currentSession.id,
+        name: currentSession.name,
+        createdAt: currentSession.createdAt,
+        userCount: currentSession.users.size
+      });
+    } else {
+      socket.emit('session:active', null);
+    }
   });
 
   // Handle session end
-  socket.on('session:end', (sessionId) => {
-    const result = endSession(sessionId);
-    if (result) {
+  socket.on('session:end', () => {
+    if (currentSession) {
+      const result = endSession();
       io.emit('session:ended', result);
+      io.emit('markers:update', []);
+      io.emit('users:update', []);
     }
   });
 

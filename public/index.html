@@ -2150,25 +2150,38 @@
     }
 
     // Check for active session
-    async function checkActiveSession() {
+    async function checkActiveSessions() {
       try {
-        const response = await fetch('/api/current-session');
-        const data = await response.json();
-        if (data.active) {
+        const response = await fetch('/api/sessions');
+        const sessions = await response.json();
+        
+        if (sessions && sessions.length > 0) {
           elements.activeSessionSection.classList.remove('hidden');
-          elements.activeSessionInfo.innerHTML = `
-            <h4>${escapeHtml(data.name)}</h4>
-            <p>Started: ${new Date(data.createdAt).toLocaleString()} | ${data.userCount} users</p>
-          `;
-          state.currentSession = data;
-          return true;
+          elements.activeSessionsList.innerHTML = sessions.map(s => `
+            <div class="session-item" data-session-id="${s.id}">
+              <div class="session-info">
+                <h4>${escapeHtml(s.name)}</h4>
+                <p>Created: ${new Date(s.createdAt).toLocaleString()}</p>
+                <p>${s.userCount} users • ${s.markerCount} markers</p>
+              </div>
+              <button class="join-session-btn" data-session-id="${s.id}">Join</button>
+            </div>
+          `).join('');
+        } else {
+          elements.activeSessionsList.innerHTML = '<div class="no-sessions">No active sessions</div>';
         }
       } catch (e) {
-        console.error('Error checking active session:', e);
+        console.error('Error checking active sessions:', e);
+        elements.activeSessionSection.classList.add('hidden');
       }
-      elements.activeSessionSection.classList.add('hidden');
-      return false;
     }
+
+    // Socket event listeners
+    if (state.socket) {
+      state.socket.on('sessions:list', (sessionsList) => {
+        checkActiveSessions();
+      });
+    } }
 
     // Show welcome screen
     function showWelcomeScreen() {
