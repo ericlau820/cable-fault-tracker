@@ -10,7 +10,7 @@ const io = new Server(server);
 
 // Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: '10mb' })); // Increase limit for photo uploads
+app.use(express.json({ limit: '50mb' })); // Increase limit for large photo uploads (iPhone photos can be 10-30MB)
 
 // Sessions directory
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
