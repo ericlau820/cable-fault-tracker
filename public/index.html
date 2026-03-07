@@ -2154,6 +2154,11 @@
       state.socket.on('session:joined', (session) => {
         console.log('Joined session:', session.name);
         state.currentSession = session;
+
+        // Update UI with session info
+        elements.sessionName.textContent = session.name;
+        elements.sessionMeta.textContent = `Started: ${new Date(session.createdAt).toLocaleString()} | Users: ${session.userCount}`;
+        elements.sessionInfo.classList.remove('hidden');
       });
 
       // Session ended
@@ -2287,6 +2292,10 @@
       // Get position then join
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          // Join specific session FIRST (before user:join)
+          state.socket.emit('session:join', sessionId);
+
+          // Then join as user
           state.socket.emit('user:join', {
             name: name,
             lat: position.coords.latitude,
@@ -2297,14 +2306,14 @@
           state.user.lng = position.coords.longitude;
           state.map.setView([position.coords.latitude, position.coords.longitude], 15);
 
-          // Join specific session
-          state.socket.emit('session:join', sessionId);
-
           startGeolocation();
         },
         (error) => {
-          state.socket.emit('user:join', { name, lat: null, lng: null });
+          // Join specific session FIRST (before user:join)
           state.socket.emit('session:join', sessionId);
+
+          // Then join as user
+          state.socket.emit('user:join', { name, lat: null, lng: null });
         }
       );
     }
@@ -2412,9 +2421,28 @@
 
       // Create new session if requested
       if (createNew) {
-        state.socket.emit('session:create', sessionName || `${name}'s Session`);
-      }
+        // Wait for session to be created before joining
+        state.socket.once('session:created', (session) => {
+          console.log('Session created, now joining:', session.name);
+          state.currentSession = session;
 
+          // Update UI with session info
+          elements.sessionName.textContent = session.name;
+          elements.sessionMeta.textContent = `Started: ${new Date(session.createdAt).toLocaleString()} | Users: 1`;
+          elements.sessionInfo.classList.remove('hidden');
+
+          // Now join the session
+          joinSessionWithPosition(name);
+        });
+
+        state.socket.emit('session:create', sessionName || `${name}'s Session`);
+      } else {
+        // Join existing session (will get first available)
+        joinSessionWithPosition(name);
+      }
+    }
+
+    function joinSessionWithPosition(name) {
       // Get initial position then join
       navigator.geolocation.getCurrentPosition(
         (position) => {

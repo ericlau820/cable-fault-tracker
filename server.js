@@ -552,33 +552,35 @@ io.on('connection', (socket) => {
   socket.on('session:join', (sessionId) => {
     const session = sessions.get(sessionId);
     if (!session) {
+      console.error('Session not found:', sessionId);
       return socket.emit('error', { message: 'Session not found' });
     }
 
     const user = users.get(socket.id);
     if (!user) {
+      console.error('User not registered:', socket.id);
       return socket.emit('error', { message: 'User not registered' });
     }
+
+    console.log(`User ${user.name} joining session ${session.name} (${sessionId})`);
 
     joinSession(socket.id, user, sessionId);
 
     socket.emit('session:joined', {
       id: session.id,
       name: session.name,
-      createdAt: session.createdAt
+      createdAt: session.createdAt,
+      userCount: session.users.size
     });
-
-    // Send current users and markers
-    const usersList = Array.from(session.users.values());
-    const markersList = Array.from(session.markers.values());
-    socket.emit('users:update', usersList);
-    socket.emit('markers:update', markersList);
 
     // Send message history
     if (session.messages && session.messages.length > 0) {
       socket.emit('message:history', session.messages);
     }
 
+    // Broadcast updated users and markers to ALL users in this session
+    broadcastUsers(sessionId);
+    broadcastMarkers(sessionId);
     broadcastSessionInfo();
   });
 
@@ -631,15 +633,20 @@ io.on('connection', (socket) => {
     };
     users.set(socket.id, user);
 
-    // Auto-join first available session or create default
-    let sessionId = sessions.size > 0 ? sessions.keys().next().value : null;
+    // Check if user already joined a session via session:join
+    let sessionId = userSessions.get(socket.id);
 
+    // If not, auto-join first available session or create default
     if (!sessionId) {
-      const defaultSession = createSession('Default Session');
-      sessionId = defaultSession.id;
-    }
+      sessionId = sessions.size > 0 ? sessions.keys().next().value : null;
 
-    joinSession(socket.id, user, sessionId);
+      if (!sessionId) {
+        const defaultSession = createSession('Default Session');
+        sessionId = defaultSession.id;
+      }
+
+      joinSession(socket.id, user, sessionId);
+    }
 
     console.log(`User joined: ${user.name} (${user.color}) with ${user.path.length} path points`);
 
