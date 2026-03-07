@@ -2069,8 +2069,10 @@
       });
 
       // Receive users update
-      state.socket.on('users:update', (users) => {
-        state.users = users;
+      state.socket.on('users:update', (data) => {
+        // New format: {users, onlineUsers}
+        state.users = data.users || data; // Support both formats
+        state.onlineUsers = data.onlineUsers || [];
         updateUserList();
         updateUserMarkers();
       });
@@ -2157,8 +2159,18 @@
 
         // Update UI with session info
         elements.sessionName.textContent = session.name;
-        elements.sessionMeta.textContent = `Started: ${new Date(session.createdAt).toLocaleString()} | Users: ${session.userCount}`;
+        elements.sessionMeta.textContent = `Started: ${new Date(session.createdAt).toLocaleString()} | Users: ${session.users.length}`;
         elements.sessionInfo.classList.remove('hidden');
+
+        // Load all session data
+        state.users = session.users;
+        state.markers = session.markers || [];
+        state.messages = session.messages || [];
+
+        // Update UI
+        updateUsersList();
+        updateMarkersOnMap();
+        updateMessageBox();
       });
 
       // Session ended
@@ -2292,14 +2304,10 @@
       // Get position then join
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Join specific session FIRST (before user:join)
-          state.socket.emit('session:join', sessionId);
-
-          // Then join as user
-          state.socket.emit('user:join', {
-            name: name,
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
+          // Join specific session with userName
+          state.socket.emit('session:join', {
+            sessionId: sessionId,
+            userName: name
           });
 
           state.user.lat = position.coords.latitude;
@@ -2309,11 +2317,11 @@
           startGeolocation();
         },
         (error) => {
-          // Join specific session FIRST (before user:join)
-          state.socket.emit('session:join', sessionId);
-
-          // Then join as user
-          state.socket.emit('user:join', { name, lat: null, lng: null });
+          // Join specific session with userName
+          state.socket.emit('session:join', {
+            sessionId: sessionId,
+            userName: name
+          });
         }
       );
     }
@@ -2421,51 +2429,44 @@
 
       // Create new session if requested
       if (createNew) {
-        // Wait for session to be created before joining
+        // Wait for session to be created
         state.socket.once('session:created', (session) => {
           console.log('Session created, now joining:', session.name);
-          state.currentSession = session;
-
-          // Update UI with session info
-          elements.sessionName.textContent = session.name;
-          elements.sessionMeta.textContent = `Started: ${new Date(session.createdAt).toLocaleString()} | Users: 1`;
-          elements.sessionInfo.classList.remove('hidden');
 
           // Now join the session
-          joinSessionWithPosition(name);
+          joinSessionWithPosition(name, session.id);
         });
 
         state.socket.emit('session:create', sessionName || `${name}'s Session`);
       } else {
-        // Join existing session (will get first available)
-        joinSessionWithPosition(name);
+        // Join existing session (first available)
+        joinSessionWithPosition(name, null);
       }
     }
 
-    function joinSessionWithPosition(name) {
+    function joinSessionWithPosition(name, sessionId) {
       // Get initial position then join
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          state.socket.emit('user:join', {
-            name: name,
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-
           state.user.lat = position.coords.latitude;
           state.user.lng = position.coords.longitude;
           state.user.initialPosition = true;
           state.map.setView([position.coords.latitude, position.coords.longitude], 15);
 
+          // Join session
+          state.socket.emit('session:join', {
+            sessionId: sessionId, // null = first available
+            userName: name
+          });
+
           // Start continuous tracking
           startGeolocation();
         },
         (error) => {
-          // Join without position, will update later
-          state.socket.emit('user:join', {
-            name: name,
-            lat: null,
-            lng: null
+          // Join without position
+          state.socket.emit('session:join', {
+            sessionId: sessionId,
+            userName: name
           });
 
           startGeolocation();
