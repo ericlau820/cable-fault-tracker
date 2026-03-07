@@ -263,15 +263,24 @@ io.on('connection', (socket) => {
   
   // Join a specific session
   socket.on('session:join', (data) => {
-    const { sessionId, userName } = data;
-    
-    console.log(`User ${userName} joining session ${sessionId}`);
-    
+    const { sessionId, userName, lat, lng } = data;
+
+    console.log(`User ${userName} joining session ${sessionId} at (${lat}, ${lng})`);
+
     const session = joinSession(socket.id, sessionId, userName);
     if (!session) {
       return socket.emit('error', { message: 'Session not found' });
     }
-    
+
+    // Update user position if provided
+    if (lat && lng) {
+      const user = session.users.find(u => u.name === userName);
+      if (user) {
+        user.lat = lat;
+        user.lng = lng;
+      }
+    }
+
     // Send full session data to user
     socket.emit('session:joined', {
       id: session.id,

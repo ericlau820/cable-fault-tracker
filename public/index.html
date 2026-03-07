@@ -2249,6 +2249,21 @@
         // Return to welcome screen
         showWelcomeScreen();
       });
+
+      // User position update
+      state.socket.on('user:position', (data) => {
+        console.log('User position update:', data.userName);
+
+        // Find and update user in state.users
+        const user = state.users.find(u => u.name === data.userName);
+        if (user) {
+          user.lat = data.lat;
+          user.lng = data.lng;
+
+          // Update markers on map
+          updateUserMarkers();
+        }
+      });
     }
 
     // Start geolocation tracking
@@ -2392,10 +2407,12 @@
       // Get position then join
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Join specific session with userName
+          // Join specific session with userName and position
           state.socket.emit('session:join', {
             sessionId: sessionId,
-            userName: name
+            userName: name,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
           });
 
           state.user.lat = position.coords.latitude;
@@ -2405,11 +2422,13 @@
           startGeolocation();
         },
         (error) => {
-          // Join specific session with userName
+          // Join specific session with userName (no position)
           state.socket.emit('session:join', {
             sessionId: sessionId,
             userName: name
           });
+
+          startGeolocation();
         }
       );
     }
