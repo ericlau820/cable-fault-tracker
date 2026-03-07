@@ -2232,12 +2232,21 @@
 
         // Load all session data
         state.users = session.users;
-        state.markers = session.markers || [];
         state.messages = session.messages || [];
 
         // Update UI
         updateUsersList();
-        updateMarkersOnMap();
+        updateUserMarkers();  // Show users with paths
+
+        // Load historical markers
+        if (session.markers && session.markers.length > 0) {
+          console.log('Loading historical markers:', session.markers.length);
+          session.markers.forEach(marker => {
+            addMarkerToMap(marker);
+          });
+        }
+
+        // Load historical messages
         updateMessageBox();
       });
 
