@@ -538,10 +538,42 @@ app.get('/api/sessions/past', (req, res) => {
         return null;
       }
     }).filter(s => s !== null);
-    
+
     res.json(endedSessions);
   } catch (err) {
     res.json([]);
+  }
+});
+
+// Get single session details (for replay)
+app.get('/api/sessions/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    // Security: prevent directory traversal
+    if (filename.includes('..') || filename.includes('/')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    // Try ended sessions first
+    let filepath = path.join(ENDED_DIR, filename);
+
+    // If not found in ended, try active sessions
+    if (!fs.existsSync(filepath)) {
+      filepath = path.join(SESSIONS_DIR, filename);
+    }
+
+    // If still not found, return 404
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Read and return session data
+    const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    res.json(data);
+  } catch (err) {
+    console.error('Error loading session:', err);
+    res.status(500).json({ error: 'Failed to load session' });
   }
 });
 
