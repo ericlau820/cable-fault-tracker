@@ -168,42 +168,60 @@ function endSession(sessionId) {
     console.error('Session not found:', sessionId);
     return null;
   }
-  
+
+  // Get online users BEFORE deleting session (for broadcasting)
+  const onlineSocketIds = Object.keys(session.onlineUsers);
+
   // Update status
   session.status = 'END';
   session.endedAt = new Date().toISOString();
-  
+
   // Generate filename for ended session
   const date = new Date(session.endedAt);
   const dateStr = date.toISOString().split('T')[0];
   const timeStr = date.toTimeString().split(' ')[0].replace(/:/g, '-');
   const safeName = session.name.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
   const filename = `session_${dateStr}_${timeStr}_${safeName}.json`;
-  
+
+  const result = {
+    sessionId,
+    filename,
+    sessionName: session.name,
+    endedAt: session.endedAt
+  };
+
+  // Broadcast to all online users BEFORE deleting session
+  onlineSocketIds.forEach(socketId => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+      socket.emit('session:ended', result);
+    }
+  });
+
   // Move to ended folder
   try {
     const oldPath = path.join(SESSIONS_DIR, `${sessionId}.json`);
     const newPath = path.join(ENDED_DIR, filename);
-    
+
     fs.writeFileSync(newPath, JSON.stringify(session, null, 2));
     fs.unlinkSync(oldPath);
-    
+
     console.log(`Session ended and moved to: ${filename}`);
   } catch (err) {
     console.error('Error moving session to ended folder:', err);
   }
-  
+
   // Remove from memory
   sessions.delete(sessionId);
-  
+
   // Clear userSessions for users in this session
   userSessions.forEach((sid, sockId) => {
     if (sid === sessionId) {
       userSessions.delete(sockId);
     }
   });
-  
-  return { sessionId, filename, sessionName: session.name };
+
+  return result;
 }
 
 function broadcastToSession(sessionId, event, data) {
