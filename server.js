@@ -347,22 +347,28 @@ io.on('connection', (socket) => {
     const userName = session.onlineUsers[socket.id];
     const user = session.users.find(u => u.name === userName);
     
-    if (user && user.tracking && position.lat && position.lng) {
-      // Add to path if moved enough
-      const lastPoint = user.path[user.path.length - 1];
-      const shouldRecord = !lastPoint || 
-        calculateDistance(lastPoint.lat, lastPoint.lng, position.lat, position.lng) >= 5;
-      
-      if (shouldRecord) {
-        user.path.push({
-          lat: position.lat,
-          lng: position.lng,
-          timestamp: Date.now()
-        });
-        
-        // Save periodically (not every update)
-        if (user.path.length % 10 === 0) {
-          saveSession(sessionId);
+    if (user && position.lat && position.lng) {
+      // Update user's current position (always)
+      user.lat = position.lat;
+      user.lng = position.lng;
+
+      // Add to path if tracking enabled and moved enough
+      if (user.tracking) {
+        const lastPoint = user.path[user.path.length - 1];
+        const shouldRecord = !lastPoint || 
+          calculateDistance(lastPoint.lat, lastPoint.lng, position.lat, position.lng) >= 5;
+
+        if (shouldRecord) {
+          user.path.push({
+            lat: position.lat,
+            lng: position.lng,
+            timestamp: Date.now()
+          });
+
+          // Save periodically (not every update)
+          if (user.path.length % 10 === 0) {
+            saveSession(sessionId);
+          }
         }
       }
     }
