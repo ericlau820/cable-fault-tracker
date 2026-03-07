@@ -2250,7 +2250,7 @@
         state.markerData = {};
 
         // Update UI
-        updateUsersList();
+        updateUserList();
         updateUserMarkers();  // Show users with paths
 
         // Load historical markers
@@ -2505,7 +2505,7 @@
       elements.welcomeModal.classList.remove('hidden');
 
       // Check for active session
-      checkActiveSession();
+      checkActiveSessions();
     }
 
     // Clear all session data from map
@@ -2955,7 +2955,7 @@
       });
 
       // Check for active session on load
-      checkActiveSession();
+      checkActiveSessions();
     }
 
     // Start the app
