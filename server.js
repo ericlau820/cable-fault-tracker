@@ -16,7 +16,7 @@ const io = new Server(server, {
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Directories
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
