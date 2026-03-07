@@ -2223,6 +2223,12 @@
       // Session joined
       state.socket.on('session:joined', (session) => {
         console.log('Joined session:', session.name);
+        console.log('Session data:', {
+          users: session.users ? session.users.length : 0,
+          markers: session.markers ? session.markers.length : 0,
+          messages: session.messages ? session.messages.length : 0
+        });
+
         state.currentSession = session;
 
         // Update UI with session info
@@ -2231,8 +2237,17 @@
         elements.sessionInfo.classList.remove('hidden');
 
         // Load all session data
-        state.users = session.users;
+        state.users = session.users || [];
         state.messages = session.messages || [];
+
+        // Clear existing markers first
+        Object.values(state.markers).forEach(marker => {
+          if (marker && marker.remove) {
+            marker.remove();
+          }
+        });
+        state.markers = {};
+        state.markerData = {};
 
         // Update UI
         updateUsersList();
@@ -2242,12 +2257,16 @@
         if (session.markers && session.markers.length > 0) {
           console.log('Loading historical markers:', session.markers.length);
           session.markers.forEach(marker => {
+            console.log('Adding marker:', marker.id, marker.icon, marker.label);
             addMarkerToMap(marker);
           });
+        } else {
+          console.log('No historical markers to load');
         }
 
         // Load historical messages
         updateMessageBox();
+        console.log('Messages loaded:', state.messages.length);
       });
 
       // Session ended
