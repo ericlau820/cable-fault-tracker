@@ -532,6 +532,16 @@
       color: white;
     }
 
+    .user-color-badge {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      margin-left: 8px;
+      flex-shrink: 0;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
     .user-path-info {
       font-size: 10px;
       color: #95a5a6;
@@ -1686,6 +1696,7 @@
             <span class="user-tracking-status ${user.tracking ? 'tracking-on' : 'tracking-off'}">
               ${user.tracking ? '*' : 'o'}
             </span>
+            <div class="user-color-badge" style="background: ${user.color}"></div>
           </div>
           ${user.path && user.path.length > 1 ? `<div class="user-path-info">${user.path.length} points</div>` : ''}
         `;
