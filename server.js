@@ -260,15 +260,15 @@ io.on('connection', (socket) => {
       name: session.name,
       createdAt: session.createdAt,
       users: session.users,
-      onlineUsers: Object.keys(session.onlineUsers),
+      onlineUsers: Object.values(session.onlineUsers), // Send user names
       markers: session.markers,
       messages: session.messages
     });
-    
+
     // Broadcast updated user list to all users in this session
     broadcastToSession(sessionId, 'users:update', {
       users: session.users,
-      onlineUsers: Object.keys(session.onlineUsers)
+      onlineUsers: Object.values(session.onlineUsers) // Send user names
     });
     
     // Broadcast updated session list to all connected clients
@@ -427,23 +427,29 @@ io.on('connection', (socket) => {
   // Disconnect
   socket.on('disconnect', () => {
     const sessionId = userSessions.get(socket.id);
-    
+
     if (sessionId) {
       const session = sessions.get(sessionId);
       if (session) {
         const userName = session.onlineUsers[socket.id];
         console.log(`User disconnected: ${userName} from session ${session.name}`);
-        
-        leaveSession(socket.id);
-        
-        // Broadcast updated user list
+
+        // Get online user names BEFORE removing
+        const onlineUserNames = Object.values(session.onlineUsers);
+
+        // Remove from online users
+        delete session.onlineUsers[socket.id];
+        userSessions.delete(socket.id);
+        saveSession(sessionId);
+
+        // Broadcast updated user list (with updated onlineUsers)
         broadcastToSession(sessionId, 'users:update', {
           users: session.users,
-          onlineUsers: Object.keys(session.onlineUsers)
+          onlineUsers: Object.values(session.onlineUsers) // Send user names, not socket IDs
         });
       }
     }
-    
+
     // Broadcast updated session list
     const activeSessionsList = Array.from(sessions.values())
       .filter(s => s.status === 'ACTIVE')

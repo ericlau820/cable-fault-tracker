@@ -1647,19 +1647,29 @@
 
     // Update user list UI
     function updateUserList() {
-      elements.userList.innerHTML = state.users.map(user => `
-        <div class="user-item">
-          <div class="user-color" style="background: ${user.color}"></div>
-          <span class="user-name">${escapeHtml(user.name)}</span>
-          ${state.user && user.id === state.user.id ? '<span class="user-badge">You</span>' : ''}
-          <span class="user-tracking-status ${user.tracking ? 'tracking-on' : 'tracking-off'}">
-            ${user.tracking ? '*' : 'o'}
-          </span>
-        </div>
-        ${user.path && user.path.length > 1 ? `<div class="user-path-info">${user.path.length} points</div>` : ''}
-      `).join('');
+      // Get list of online user names
+      const onlineUserNames = state.onlineUsers || [];
 
-      elements.onlineCount.textContent = state.users.length;
+      elements.userList.innerHTML = state.users.map(user => {
+        const isOnline = onlineUserNames.includes(user.name);
+        return `
+          <div class="user-item ${isOnline ? 'online' : 'offline'}">
+            <div class="user-color" style="background: ${user.color}"></div>
+            <span class="user-name">${escapeHtml(user.name)}</span>
+            ${state.user && user.name === state.user.name ? '<span class="user-badge">You</span>' : ''}
+            <span class="user-status ${isOnline ? 'online' : 'offline'}">
+              ${isOnline ? '●' : '○'}
+            </span>
+            <span class="user-tracking-status ${user.tracking ? 'tracking-on' : 'tracking-off'}">
+              ${user.tracking ? '*' : 'o'}
+            </span>
+          </div>
+          ${user.path && user.path.length > 1 ? `<div class="user-path-info">${user.path.length} points</div>` : ''}
+        `;
+      }).join('');
+
+      // Update online count
+      elements.onlineCount.textContent = onlineUserNames.length;
     }
 
     // Update user markers and paths on map
