@@ -467,11 +467,37 @@
     }
 
     .user-color {
-      width: 12px;
-      height: 12px;
+      display: none; /* Hide the color box */
+    }
+
+    .user-online-indicator {
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      margin-right: 12px;
+      margin-right: 10px;
       flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+
+    .user-online-indicator.online {
+      background: #27ae60;
+      box-shadow: 0 0 8px rgba(39, 174, 96, 0.6);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .user-online-indicator.offline {
+      background: #95a5a6;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.6);
+      }
+      50% {
+        opacity: 0.7;
+        box-shadow: 0 0 12px rgba(39, 174, 96, 0.8);
+      }
     }
 
     .user-name {
@@ -1654,12 +1680,9 @@
         const isOnline = onlineUserNames.includes(user.name);
         return `
           <div class="user-item ${isOnline ? 'online' : 'offline'}">
-            <div class="user-color" style="background: ${user.color}"></div>
+            <div class="user-online-indicator ${isOnline ? 'online' : 'offline'}"></div>
             <span class="user-name">${escapeHtml(user.name)}</span>
             ${state.user && user.name === state.user.name ? '<span class="user-badge">You</span>' : ''}
-            <span class="user-status ${isOnline ? 'online' : 'offline'}">
-              ${isOnline ? '●' : '○'}
-            </span>
             <span class="user-tracking-status ${user.tracking ? 'tracking-on' : 'tracking-off'}">
               ${user.tracking ? '*' : 'o'}
             </span>
