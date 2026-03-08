@@ -409,7 +409,25 @@ io.on('connection', (socket) => {
     
     broadcastToSession(sessionId, 'marker:added', marker);
   });
-  
+
+  // Remove marker
+  socket.on('marker:remove', (markerId) => {
+    const sessionId = userSessions.get(socket.id);
+    if (!sessionId) return;
+
+    const session = sessions.get(sessionId);
+    if (!session) return;
+
+    // Remove marker from session
+    const markerIndex = session.markers.findIndex(m => m.id === markerId);
+    if (markerIndex !== -1) {
+      session.markers.splice(markerIndex, 1);
+      saveSession(sessionId);
+      broadcastToSession(sessionId, 'marker:removed', markerId);
+      console.log(`Marker ${markerId} removed from session ${session.name}`);
+    }
+  });
+
   // Add message
   socket.on('message:add', (messageData) => {
     const sessionId = userSessions.get(socket.id);
