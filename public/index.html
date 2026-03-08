@@ -2559,9 +2559,11 @@
                 <div class="session-item ${index === 0 ? 'selected' : ''}"
                      data-session-id="${s.id}"
                      onclick="selectSession('${s.id}')">
-                  <div class="session-name">${escapeHtml(s.name)}</div>
-                  <div class="session-meta">Started: ${new Date(s.createdAt).toLocaleString()}</div>
-                  <div class="session-meta">${s.userCount} user${s.userCount !== 1 ? 's' : ''}</div>
+                  <div>
+                    <div class="session-name">${escapeHtml(s.name)}</div>
+                    <div class="session-meta">Started: ${new Date(s.createdAt).toLocaleString()}</div>
+                    <div class="session-meta">${s.userCount} user${s.userCount !== 1 ? 's' : ''}</div>
+                  </div>
                 </div>
               `).join('')}
             </div>
