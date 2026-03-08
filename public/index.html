@@ -2417,11 +2417,7 @@
 
         // Load historical messages
         updateMessageBox();
-        updateChatPanel();  // Update top-right chat panel
         console.log('Messages loaded:', state.messages.length);
-
-        // Show chat panel
-        elements.chatPanel.classList.remove('hidden');
       });
 
       // Session ended
