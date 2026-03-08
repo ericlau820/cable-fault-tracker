@@ -115,13 +115,13 @@ function joinSession(socketId, sessionId, userName) {
     console.error('Session not found:', sessionId);
     return null;
   }
-  
+
   // Add to online users
   session.onlineUsers[socketId] = userName;
-  
+
   // Check if user already exists in users list
   let user = session.users.find(u => u.name === userName);
-  
+
   if (!user) {
     // New user - add to users list
     user = {
@@ -138,13 +138,16 @@ function joinSession(socketId, sessionId, userName) {
     user.lastOnline = new Date().toISOString();
     console.log(`Returning user joined: ${userName}`);
   }
-  
+
+  console.log(`[DEBUG] Session ${session.name} now has ${session.users.length} users:`,
+    session.users.map(u => u.name));
+
   // Track which session this socket is in
   userSessions.set(socketId, sessionId);
-  
+
   // Save to disk
   saveSession(sessionId);
-  
+
   return session;
 }
 

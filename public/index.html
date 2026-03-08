@@ -1860,6 +1860,8 @@
 
     // Update user markers and paths on map
     function updateUserMarkers() {
+      console.log('[DEBUG] updateUserMarkers called, state.users:', state.users.length);
+
       // Remove old markers and polylines
       Object.values(state.userMarkers).forEach(marker => {
         state.map.removeLayer(marker.icon);
@@ -1874,6 +1876,8 @@
 
       // Add new markers and paths
       state.users.forEach((user, index) => {
+        console.log(`[DEBUG] Processing user ${index}: ${user.name}, lat: ${user.lat}, lng: ${user.lng}`);
+
         if (user.lat && user.lng) {
           // Add current position marker
           const icon = L.marker([user.lat, user.lng], {
@@ -1898,8 +1902,12 @@
 
             state.userPolylines[user.id || `replay_${index}`] = polyline;
           }
+        } else {
+          console.log(`[DEBUG] User ${user.name} has no position, skipping`);
         }
       });
+
+      console.log('[DEBUG] userMarkers created:', Object.keys(state.userMarkers).length);
     }
 
     // Add marker to map
@@ -2289,9 +2297,18 @@
 
       // Receive users update
       state.socket.on('users:update', (data) => {
+        console.log('[DEBUG] users:update received:', {
+          usersCount: data.users ? data.users.length : 'N/A',
+          users: data.users ? data.users.map(u => u.name) : 'N/A',
+          onlineUsers: data.onlineUsers
+        });
+
         // New format: {users, onlineUsers}
         state.users = data.users || data; // Support both formats
         state.onlineUsers = data.onlineUsers || [];
+
+        console.log('[DEBUG] state.users after update:', state.users.map(u => u.name));
+
         updateUserList();
         updateUserMarkers();
       });
