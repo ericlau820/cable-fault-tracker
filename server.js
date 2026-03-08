@@ -230,10 +230,26 @@ function broadcastToSession(sessionId, event, data) {
     console.error('Cannot broadcast - session not found:', sessionId);
     return;
   }
-  
+
   const onlineSocketIds = Object.keys(session.onlineUsers);
   console.log(`Broadcasting ${event} to ${onlineSocketIds.length} users in session ${session.name}`);
-  
+
+  // If broadcasting users:update, ensure all users have lat/lng from path
+  if (event === 'users:update' && data.users) {
+    data.users = data.users.map(user => {
+      // If user doesn't have lat/lng but has path, use last path point
+      if ((!user.lat || !user.lng) && user.path && user.path.length > 0) {
+        const lastPoint = user.path[user.path.length - 1];
+        return {
+          ...user,
+          lat: lastPoint.lat,
+          lng: lastPoint.lng
+        };
+      }
+      return user;
+    });
+  }
+
   onlineSocketIds.forEach(socketId => {
     const socket = io.sockets.sockets.get(socketId);
     if (socket) {
