@@ -576,24 +576,29 @@ app.get('/api/sessions/past', (req, res) => {
     const files = fs.readdirSync(ENDED_DIR).filter(f => f.endsWith('.json'));
     const endedSessions = files.map(file => {
       try {
-        const filepath = path.join(ENDED_DIR, file);
-        const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-        return {
-          filename: file,
-          name: data.name,
-          createdAt: data.createdAt,
-          endedAt: data.endedAt,
-          userCount: data.users ? data.users.length : 0,
-          markerCount: data.markers ? data.markers.length : 0
-        };
-      } catch (err) {
-        return null;
-      }
-    }).filter(s => s !== null);
+    const filepath = path.join(ENDED_DIR, file);
+    const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    return {
+      filename: file,
+      name: data.name,
+      createdAt: data.createdAt,
+      endedAt: data.endedAt,
+      userCount: data.users ? data.users.length : 0,
+      markerCount: data.markers ? data.markers.length : 0
+    };
+    } catch (err) {
+    return null;
+    }
+  }).filter(s => s !== null);
 
-    res.json(endedSessions);
+  // Sort by createdAt descending (newest first)
+  endedSessions.sort((a, b) => {
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  res.json(endedSessions);
   } catch (err) {
-    res.json([]);
+  res.json([]);
   }
 });
 
