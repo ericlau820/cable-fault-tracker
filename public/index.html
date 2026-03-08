@@ -1874,17 +1874,48 @@
       });
       state.userPolylines = {};
 
-      // Add new markers and paths
+      // Group users by position to handle overlapping markers
+      const positionGroups = {};
+      state.users.forEach((user, index) => {
+        if (user.lat && user.lng) {
+          const key = `${user.lat.toFixed(6)},${user.lng.toFixed(6)}`;
+          if (!positionGroups[key]) {
+            positionGroups[key] = [];
+          }
+          positionGroups[key].push({ user, index });
+        }
+      });
+
+      // Add new markers and paths with offset for overlapping users
       state.users.forEach((user, index) => {
         console.log(`[DEBUG] Processing user ${index}: ${user.name}, lat: ${user.lat}, lng: ${user.lng}`);
 
         if (user.lat && user.lng) {
+          const key = `${user.lat.toFixed(6)},${user.lng.toFixed(6)}`;
+          const group = positionGroups[key];
+          const groupIndex = group.findIndex(g => g.index === index);
+          const groupSize = group.length;
+
+          // Add offset for overlapping markers (spread in a circle)
+          let offsetLat = 0;
+          let offsetLng = 0;
+          if (groupSize > 1) {
+            const angle = (groupIndex / groupSize) * 2 * Math.PI;
+            const offsetMeters = 0.0001; // ~11 meters
+            offsetLat = Math.cos(angle) * offsetMeters;
+            offsetLng = Math.sin(angle) * offsetMeters;
+            console.log(`[DEBUG] User ${user.name} offset: ${offsetLat}, ${offsetLng} (group ${groupIndex + 1}/${groupSize})`);
+          }
+
+          const finalLat = user.lat + offsetLat;
+          const finalLng = user.lng + offsetLng;
+
           // Add current position marker
-          const icon = L.marker([user.lat, user.lng], {
+          const icon = L.marker([finalLat, finalLng], {
             icon: createMarkerIcon(user.color, true)
           }).addTo(state.map);
 
-          const label = L.marker([user.lat, user.lng], {
+          const label = L.marker([finalLat, finalLng], {
             icon: createUserLabel(user.name, user.color)
           }).addTo(state.map);
 
