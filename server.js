@@ -634,6 +634,35 @@ app.get('/api/sessions/:filename', (req, res) => {
   }
 });
 
+// Delete a past session
+app.delete('/api/sessions/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    // Security: prevent directory traversal
+    if (filename.includes('..') || filename.includes('/')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    // Only allow deleting from ended sessions directory
+    const filepath = path.join(ENDED_DIR, filename);
+
+    // Check if file exists
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Delete the file
+    fs.unlinkSync(filepath);
+    console.log(`Deleted session file: ${filename}`);
+
+    res.json({ success: true, message: 'Session deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting session:', err);
+    res.status(500).json({ error: 'Failed to delete session' });
+  }
+});
+
 // Photo upload
 app.post('/api/upload-photo', async (req, res) => {
   try {
