@@ -1,4 +1,4 @@
-# Cable Fault Path Tracker 📍
+# Cable Fault Path Tracker 🗺️
 
 Real-time collaborative GPS tracking application for cable fault location and management.
 
@@ -9,7 +9,7 @@ Real-time collaborative GPS tracking application for cable fault location and ma
 
 ### Core Features
 - 🗺️ **Real-time GPS Tracking** - Track team members' locations in real-time
-- 📍 **Marker System** - Place markers with custom icons and labels
+- ⚠️ **Fault Marker System** - Place fault markers with custom labels and photos
 - 💬 **Chat System** - Real-time messaging with notifications
 - 📊 **Session Management** - Create, join, and review past sessions
 - 📱 **PWA Support** - Install as mobile app with offline support
@@ -19,6 +19,12 @@ Real-time collaborative GPS tracking application for cable fault location and ma
 - 📷 **Photo Attachments** - Attach photos to fault markers
 - 🎨 **Custom Markers** - 32+ icons for different fault types
 - 📝 **Fault Documentation** - Label and document fault locations
+- 📄 **PDF Report Export** - Generate comprehensive fault reports with:
+  - Session info (date, participants)
+  - Map screenshot with team paths
+  - Fault markers with coordinates
+  - Team movement statistics
+  - Site photos gallery
 
 ### Technical Features
 - 🔒 **Session Persistence** - Sessions saved to JSON files
