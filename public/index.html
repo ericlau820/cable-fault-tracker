@@ -1310,23 +1310,22 @@
   /* OCR Panel Styles */
   .ocr-panel {
     position: fixed;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%, 0);
+    bottom: 70px;
+    right: 10px;
     width: 90%;
-    max-width: 800px;
+    max-width: 400px;
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    max-height: 60vh;
+    z-index: 900;
+    max-height: 50vh;
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
   }
 
   .ocr-panel.hidden {
-    transform: translateX(-50%, 100%);
+    transform: translateX(120%);
     opacity: 0;
     pointer-events: none;
   }
@@ -1829,7 +1828,7 @@
   <!-- OCR Panel -->
   <div id="ocrPanel" class="ocr-panel hidden">
     <div class="ocr-panel-header">
-      <h4>📷 OCR Reader</h4>
+      <h4>📷 Readings</h4>
       <button id="ocrPanelToggle" class="chat-toggle-btn" title="Collapse">▼</button>
     </div>
     <div id="ocrPanelContent" class="ocr-panel-content">
@@ -4031,10 +4030,10 @@
       const btn = document.getElementById('ocrPanelToggle');
       
       if (state.ocrCollapsed) {
-        panel.style.transform = 'translateX(-50%, 100%)';
+        panel.style.transform = 'translateX(120%)';
         btn.textContent = '▼';
       } else {
-        panel.style.transform = 'translateX(-50%, 0)';
+        panel.style.transform = 'translateX(0)';
         btn.textContent = '▲';
       }
     }
