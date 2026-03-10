@@ -99,7 +99,8 @@ function createSession(name) {
     users: [],
     onlineUsers: {}, // socketId -> userName
     markers: [],
-    messages: []
+    messages: [],
+    ocrReadings: [] // OCR readings from all users
   };
   
   sessions.set(session.id, session);
@@ -470,6 +471,38 @@ io.on('connection', (socket) => {
     saveSession(sessionId);
     
     broadcastToSession(sessionId, 'message:new', message);
+  });
+
+  // OCR Reading
+  socket.on('ocr:reading', (readingData) => {
+    const sessionId = userSessions.get(socket.id);
+    if (!sessionId) return;
+    
+    const session = sessions.get(sessionId);
+    if (!session) return;
+    
+    const userName = session.onlineUsers[socket.id];
+    const user = session.users.find(u => u.name === userName);
+    
+    const reading = {
+      id: `ocr_${Date.now()}`,
+      value: readingData.value,
+      lat: readingData.lat,
+      lng: readingData.lng,
+      user: userName,
+      color: user ? user.color : '#3498db',
+      timestamp: Date.now()
+    };
+    
+    // Initialize ocrReadings array if not exists
+    if (!session.ocrReadings) {
+      session.ocrReadings = [];
+    }
+    
+    session.ocrReadings.push(reading);
+    saveSession(sessionId);
+    
+    broadcastToSession(sessionId, 'ocr:reading', reading);
   });
   
   // End session

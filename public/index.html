@@ -1307,6 +1307,354 @@
       flex: 1;
     }
   </style>
+
+  <!-- OCR Panel Styles -->
+  .ocr-panel {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%, 0);
+    width: 90%;
+    max-width: 800px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+  }
+
+  .ocr-panel.hidden {
+    transform: translateX(-50%, 100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ocr-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .ocr-panel-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .ocr-panel-content {
+    padding: 12px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .ocr-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 700px) {
+    .ocr-main-grid {
+      grid-template-columns: 1fr;
+    }
+    .ocr-panel {
+      width: 95%;
+      max-height: 70vh;
+    }
+  }
+
+  .ocr-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .ocr-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .camera-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #1a1a2e;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  #ocrVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+
+  #ocrVideo.active {
+    display: block;
+  }
+
+  .camera-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .corner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: #00f0ff;
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .corner-tl { top: 8px; left: 8px; border-top-width: 2px; border-left-width: 2px; }
+  .corner-tr { top: 8px; right: 8px; border-top-width: 2px; border-right-width: 2px; }
+  .corner-bl { bottom: 8px; left: 8px; border-bottom-width: 2px; border-left-width: 2px; }
+  .corner-br { bottom: 8px; right: 8px; border-bottom-width: 2px; border-right-width: 2px; }
+
+  .roi-rect-fixed {
+    position: absolute;
+    border: 2px solid #00ff88;
+    background: rgba(0, 255, 136, 0.15);
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+  }
+
+  .no-camera {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #5a6a7a;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .no-camera svg {
+    opacity: 0.5;
+  }
+
+  .ocr-controls {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .ocr-controls .btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .ocr-display {
+    margin-top: 12px;
+    padding: 12px;
+    background: #1a1a2e;
+    border-radius: 6px;
+    text-align: center;
+  }
+
+  .ocr-label {
+    font-size: 10px;
+    color: #5a6a7a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .ocr-value {
+    font-family: 'Courier New', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    margin: 4px 0;
+  }
+
+  .ocr-location {
+    font-size: 10px;
+    color: #888;
+  }
+
+  .ocr-settings {
+    margin-top: 10px;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+  }
+
+  .setting-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .setting-label {
+    color: #666;
+  }
+
+  .setting-group input[type="range"] {
+    width: 80px;
+    cursor: pointer;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 180px;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+  }
+
+  .ocr-data-log {
+    max-height: 100px;
+    overflow-y: auto;
+    margin-top: 10px;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+    font-size: 10px;
+  }
+
+  .no-ocr-data {
+    color: #888;
+    text-align: center;
+    padding: 10px;
+  }
+
+  .ocr-log-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .ocr-log-entry:last-child {
+    border-bottom: none;
+  }
+
+  .ocr-log-user {
+    font-weight: 600;
+  }
+
+  .ocr-log-value {
+    color: #00a86b;
+    font-family: monospace;
+  }
+
+  .ocr-log-time {
+    color: #888;
+    }
+
+  /* Calibration Modal */
+  .calibration-canvas-wrapper {
+    position: relative;
+    width: 100%;
+    background: #1a1a2e;
+    border-radius: 6px;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  #ocrCalibrationCanvas, #ocrRoiOverlay {
+    display: block;
+    width: 100%;
+  }
+
+  #ocrRoiOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    cursor: crosshair;
+  }
+
+  .calibration-instructions {
+    margin-top: 12px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #555;
+  }
+
+  .calibration-instructions strong {
+    color: #2c3e50;
+  }
+
+  .roi-info {
+    margin-top: 10px;
+    padding: 8px;
+    background: #e8f5e9;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 12px;
+    color: #155724;
+  }
+
+  .calibration-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+
+  .btn-success {
+    border-color: #27ae60;
+    color: #27ae60;
+  }
+
+  .btn-success:hover {
+    background: rgba(39, 174, 96, 0.1);
+  }
+
+  .btn-success.active, .btn-success:disabled {
+    background: #27ae60;
+    color: white;
+  }
+
+  .btn-stop {
+    border-color: #e74c3c;
+    color: #e74c3c;
+  }
+
+  .btn-stop:hover {
+    background: rgba(231, 76, 60, 0.1);
+  }
+
+  .btn-stop.active {
+    background: #e74c3c;
+    color: white;
+  }
+
+  .btn-cancel {
+    background: #95a5a6;
+    color: white;
+    border: none;
+    margin-top: 10px;
+    width: 100%;
+  }
 </head>
 <body>
   <!-- Welcome/Session Modal -->
@@ -1471,10 +1819,93 @@
     <button id="trackingBtn" class="btn-success">Pause</button>
     <button id="addMarkerBtn" class="btn-primary">Add Marker</button>
     <button id="measureBtn" class="btn-secondary">📏 Measure</button>
+    <button id="ocrBtn" class="btn-secondary">📷 OCR</button>
     <button id="exportPdfBtn" class="btn-secondary">📄 PDF</button>
     <button id="clearPathBtn" class="btn-warning">Clear Path</button>
     <button id="centerBtn" class="btn-secondary">My Location</button>
     <button id="endSessionBtn" class="btn-danger">End Session</button>
+  </div>
+
+  <!-- OCR Panel -->
+  <div id="ocrPanel" class="ocr-panel hidden">
+    <div class="ocr-panel-header">
+      <h4>📷 OCR Reader</h4>
+      <button id="ocrPanelToggle" class="chat-toggle-btn" title="Collapse">▼</button>
+    </div>
+    <div id="ocrPanelContent" class="ocr-panel-content">
+      <div class="ocr-main-grid">
+        <!-- Camera Section -->
+        <div class="ocr-section">
+          <div class="ocr-section-title">Camera Feed</div>
+          <div class="camera-container" id="cameraContainer">
+            <video id="ocrVideo" autoplay playsinline></video>
+            <div class="camera-overlay" id="cameraOverlay">
+              <div class="corner corner-tl"></div>
+              <div class="corner corner-tr"></div>
+              <div class="corner corner-bl"></div>
+              <div class="corner corner-br"></div>
+            </div>
+            <div class="roi-rect-fixed" id="liveRoiRect"></div>
+            <div class="no-camera" id="noCamera">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 40px; height: 40px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <p>Click Calibrate to start</p>
+            </div>
+          </div>
+          <div class="ocr-controls">
+            <button id="calibrateBtn" class="btn btn-success">Calibrate</button>
+            <button id="startOcrBtn" class="btn" disabled>Start</button>
+            <button id="stopOcrBtn" class="btn btn-stop" disabled>Stop</button>
+            <button id="captureOcrBtn" class="btn" disabled>Capture</button>
+          </div>
+          <div class="ocr-display">
+            <div class="ocr-label">Detected Value</div>
+            <div class="ocr-value" id="ocrValue">--</div>
+            <div class="ocr-location" id="ocrLocation">📍 --</div>
+          </div>
+          <div class="ocr-settings">
+            <div class="setting-group">
+              <span class="setting-label">Interval (s):</span>
+              <input type="range" id="ocrIntervalSlider" min="1" max="10" value="2" step="0.5">
+              <span id="ocrIntervalValue">2.0s</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Chart Section -->
+        <div class="ocr-section">
+          <div class="ocr-section-title">Live Chart (All Users)</div>
+          <div class="chart-container">
+            <canvas id="ocrChart"></canvas>
+          </div>
+          <div class="ocr-data-log" id="ocrDataLog">
+            <div class="no-ocr-data">No readings yet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OCR Calibration Modal -->
+  <div id="ocrCalibrationModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Select Detection Area</h2>
+      <div class="calibration-canvas-wrapper">
+        <canvas id="ocrCalibrationCanvas"></canvas>
+        <canvas id="ocrRoiOverlay"></canvas>
+      </div>
+      <div class="calibration-instructions">
+        <strong>Instructions:</strong> Tap and drag to draw a rectangle around the numbers you want to detect.
+      </div>
+      <div class="roi-info" id="ocrRoiInfo">Tap and drag to select area</div>
+      <div class="calibration-controls">
+        <button id="resetOcrRoiBtn" class="btn btn-secondary">Reset</button>
+        <button id="confirmOcrCalibration" class="btn btn-success" disabled>Confirm</button>
+      </div>
+      <button id="cancelOcrCalibration" class="btn btn-cancel">Cancel</button>
+    </div>
   </div>
 
   <!-- Measurement Display -->
@@ -1512,6 +1943,9 @@
   <!-- PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- OCR Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     // App State
     const state = {
@@ -1541,7 +1975,16 @@
       measureMarkers: [],
       pendingPhoto: null,
       selectedSessionId: null,
-      chatCollapsed: false
+      chatCollapsed: false,
+      // OCR State
+      ocrStream: null,
+      ocrInterval: null,
+      ocrRoi: null,
+      ocrProcessing: false,
+      ocrReadings: [],
+      ocrChart: null,
+      ocrCollapsed: true,
+      ocrCalibrating: false
     };
 
     // DOM Elements
@@ -1611,7 +2054,33 @@
       replayControls: document.getElementById('replayControls'),
       viewPastBtn: document.getElementById('viewPastBtn'),
       startNewBtn: document.getElementById('startNewBtn'),
-      status: document.getElementById('status')
+      status: document.getElementById('status'),
+      // OCR Elements
+      ocrBtn: document.getElementById('ocrBtn'),
+      ocrPanel: document.getElementById('ocrPanel'),
+      ocrPanelToggle: document.getElementById('ocrPanelToggle'),
+      ocrPanelContent: document.getElementById('ocrPanelContent'),
+      ocrVideo: document.getElementById('ocrVideo'),
+      noCamera: document.getElementById('noCamera'),
+      cameraOverlay: document.getElementById('cameraOverlay'),
+      liveRoiRect: document.getElementById('liveRoiRect'),
+      calibrateBtn: document.getElementById('calibrateBtn'),
+      startOcrBtn: document.getElementById('startOcrBtn'),
+      stopOcrBtn: document.getElementById('stopOcrBtn'),
+      captureOcrBtn: document.getElementById('captureOcrBtn'),
+      ocrValue: document.getElementById('ocrValue'),
+      ocrLocation: document.getElementById('ocrLocation'),
+      ocrIntervalSlider: document.getElementById('ocrIntervalSlider'),
+      ocrIntervalValue: document.getElementById('ocrIntervalValue'),
+      ocrDataLog: document.getElementById('ocrDataLog'),
+      ocrChart: document.getElementById('ocrChart'),
+      ocrCalibrationModal: document.getElementById('ocrCalibrationModal'),
+      ocrCalibrationCanvas: document.getElementById('ocrCalibrationCanvas'),
+      ocrRoiOverlay: document.getElementById('ocrRoiOverlay'),
+      ocrRoiInfo: document.getElementById('ocrRoiInfo'),
+      resetOcrRoiBtn: document.getElementById('resetOcrRoiBtn'),
+      confirmOcrCalibration: document.getElementById('confirmOcrCalibration'),
+      cancelOcrCalibration: document.getElementById('cancelOcrCalibration')
     };
 
     // Initialize icon picker
@@ -2592,6 +3061,18 @@
         updateMessageBox();
       });
 
+      // OCR readings sync
+      state.socket.on('ocr:reading', (reading) => {
+        addOcrReading(reading);
+      });
+
+      state.socket.on('ocr:history', (readings) => {
+        if (readings && readings.length > 0) {
+          state.ocrReadings = readings;
+          readings.forEach(r => addOcrReading(r));
+        }
+      });
+
       // Receive session info
       state.socket.on('session:info', (session) => {
         if (session) {
@@ -3251,6 +3732,145 @@
 
       elements.clearMeasureBtn.addEventListener('click', clearMeasurement);
 
+      // OCR controls
+      elements.ocrBtn.addEventListener('click', () => {
+        elements.ocrPanel.classList.toggle('hidden');
+        if (!elements.ocrPanel.classList.contains('hidden')) {
+          initOcrChart();
+        }
+      });
+
+      elements.ocrPanelToggle.addEventListener('click', toggleOcrPanel);
+      
+      elements.calibrateBtn.addEventListener('click', () => {
+        if (state.ocrStream) {
+          captureOcrCalibrationFrame();
+        } else {
+          startOcrCalibrationCamera();
+        }
+      });
+
+      elements.startOcrBtn.addEventListener('click', startOcrReading);
+      elements.stopOcrBtn.addEventListener('click', stopOcrReading);
+      elements.captureOcrBtn.addEventListener('click', () => { if (!state.ocrProcessing) processOcrFrame(); });
+      
+      elements.ocrIntervalSlider.addEventListener('input', (e) => {
+        document.getElementById('ocrIntervalValue').textContent = `${e.target.value}s`;
+        if (state.ocrInterval) {
+          stopOcrReading();
+          startOcrReading();
+        }
+      });
+
+      // OCR Calibration modal events
+      const ocrRoiOverlay = document.getElementById('ocrRoiOverlay');
+      let ocrDrawStart = { x: 0, y: 0 };
+      let ocrIsDrawing = false;
+
+      ocrRoiOverlay.addEventListener('mousedown', (e) => {
+        ocrIsDrawing = true;
+        const rect = ocrRoiOverlay.getBoundingClientRect();
+        const scaleX = ocrRoiOverlay.width / rect.width;
+        const scaleY = ocrRoiOverlay.height / rect.height;
+        ocrDrawStart = {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      });
+
+      ocrRoiOverlay.addEventListener('mousemove', (e) => {
+        if (!ocrIsDrawing) return;
+        const rect = ocrRoiOverlay.getBoundingClientRect();
+        const scaleX = ocrRoiOverlay.width / rect.width;
+        const scaleY = ocrRoiOverlay.height / rect.height;
+        const coords = {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+        state.ocrCurrentRect = {
+          x: Math.min(ocrDrawStart.x, coords.x),
+          y: Math.min(ocrDrawStart.y, coords.y),
+          width: Math.abs(coords.x - ocrDrawStart.x),
+          height: Math.abs(coords.y - ocrDrawStart.y)
+        };
+        drawOcrRoiRect(state.ocrCurrentRect);
+        document.getElementById('ocrRoiInfo').textContent = 
+          `Selection: ${Math.round(state.ocrCurrentRect.width)} × ${Math.round(state.ocrCurrentRect.height)} px`;
+      });
+
+      ocrRoiOverlay.addEventListener('mouseup', () => {
+        if (!ocrIsDrawing) return;
+        ocrIsDrawing = false;
+        if (state.ocrCurrentRect && state.ocrCurrentRect.width > 20 && state.ocrCurrentRect.height > 15) {
+          document.getElementById('confirmOcrCalibration').disabled = false;
+          document.getElementById('ocrRoiInfo').textContent = 
+            `Selection: ${Math.round(state.ocrCurrentRect.width)} × ${Math.round(state.ocrCurrentRect.height)} px - Click "Confirm"`;
+        } else {
+          document.getElementById('ocrRoiInfo').textContent = 'Selection too small';
+          document.getElementById('confirmOcrCalibration').disabled = true;
+        }
+      });
+
+      // Touch events for OCR calibration
+      ocrRoiOverlay.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        ocrIsDrawing = true;
+        const rect = ocrRoiOverlay.getBoundingClientRect();
+        const scaleX = ocrRoiOverlay.width / rect.width;
+        const scaleY = ocrRoiOverlay.height / rect.height;
+        ocrDrawStart = {
+          x: (e.touches[0].clientX - rect.left) * scaleX,
+          y: (e.touches[0].clientY - rect.top) * scaleY
+        };
+      });
+
+      ocrRoiOverlay.addEventListener('touchmove', (e) => {
+        if (!ocrIsDrawing) return;
+        e.preventDefault();
+        const rect = ocrRoiOverlay.getBoundingClientRect();
+        const scaleX = ocrRoiOverlay.width / rect.width;
+        const scaleY = ocrRoiOverlay.height / rect.height;
+        const coords = {
+          x: (e.touches[0].clientX - rect.left) * scaleX,
+          y: (e.touches[0].clientY - rect.top) * scaleY
+        };
+        state.ocrCurrentRect = {
+          x: Math.min(ocrDrawStart.x, coords.x),
+          y: Math.min(ocrDrawStart.y, coords.y),
+          width: Math.abs(coords.x - ocrDrawStart.x),
+          height: Math.abs(coords.y - ocrDrawStart.y)
+        };
+        drawOcrRoiRect(state.ocrCurrentRect);
+        document.getElementById('ocrRoiInfo').textContent = 
+          `Selection: ${Math.round(state.ocrCurrentRect.width)} × ${Math.round(state.ocrCurrentRect.height)} px`;
+      });
+
+      ocrRoiOverlay.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (!ocrIsDrawing) return;
+        ocrIsDrawing = false;
+        if (state.ocrCurrentRect && state.ocrCurrentRect.width > 20 && state.ocrCurrentRect.height > 15) {
+          document.getElementById('confirmOcrCalibration').disabled = false;
+          document.getElementById('ocrRoiInfo').textContent = 
+            `Selection: ${Math.round(state.ocrCurrentRect.width)} × ${Math.round(state.ocrCurrentRect.height)} px - Click "Confirm"`;
+        } else {
+          document.getElementById('ocrRoiInfo').textContent = 'Selection too small';
+          document.getElementById('confirmOcrCalibration').disabled = true;
+        }
+      });
+
+      elements.resetOcrRoiBtn.addEventListener('click', () => {
+        state.ocrCurrentRect = null;
+        clearOcrOverlay();
+        document.getElementById('ocrRoiInfo').textContent = 'Tap and drag to select area';
+        document.getElementById('confirmOcrCalibration').disabled = true;
+      });
+
+      elements.confirmOcrCalibration.addEventListener('click', confirmOcrCalibration);
+      elements.cancelOcrCalibration.addEventListener('click', () => {
+        document.getElementById('ocrCalibrationModal').classList.add('hidden');
+      });
+
       // PDF Export
       document.getElementById('exportPdfBtn').addEventListener('click', exportPdf);
 
@@ -3374,6 +3994,413 @@
       checkActiveSessions();
     }
 
+    // ==================== OCR Functions ====================
+    
+    // Initialize OCR Chart
+    function initOcrChart() {
+      const ctx = document.getElementById('ocrChart').getContext('2d');
+      state.ocrChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { boxWidth: 10, fontColor: '#666' }
+            }
+          },
+          scales: {
+            x: { grid: { color: '#eee' }, ticks: { color: '#888', maxTicksLimit: 8 } },
+            y: { grid: { color: '#eee' }, ticks: { color: '#888' } }
+          }
+        }
+      });
+    }
+    
+    // Toggle OCR Panel
+    function toggleOcrPanel() {
+      state.ocrCollapsed = !state.ocrCollapsed;
+      const panel = document.getElementById('ocrPanel');
+      const btn = document.getElementById('ocrPanelToggle');
+      
+      if (state.ocrCollapsed) {
+        panel.style.transform = 'translateX(-50%, 100%)';
+        btn.textContent = '▼';
+      } else {
+        panel.style.transform = 'translateX(-50%, 0)';
+        btn.textContent = '▲';
+      }
+    }
+    
+    // Start OCR Camera for Calibration
+    async function startOcrCalibrationCamera() {
+      try {
+        state.ocrStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        
+        const video = document.getElementById('ocrVideo');
+        video.srcObject = state.ocrStream;
+        await video.play();
+        
+        video.classList.add('active');
+        document.getElementById('noCamera').style.display = 'none';
+        
+        await new Promise(resolve => {
+          if (video.videoWidth > 0) resolve();
+          else video.onloadedmetadata = resolve;
+        });
+        
+        captureOcrCalibrationFrame();
+      } catch (err) {
+        console.error('Camera error:', err);
+        alert('Could not access camera. Please grant camera permission.');
+      }
+    }
+    
+    // Capture frame for calibration
+    function captureOcrCalibrationFrame() {
+      const video = document.getElementById('ocrVideo');
+      const canvas = document.getElementById('ocrCalibrationCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      
+      const overlay = document.getElementById('ocrRoiOverlay');
+      overlay.width = canvas.width;
+      overlay.height = canvas.height;
+      
+      state.ocrCalibration = {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight
+      };
+      state.ocrCurrentRect = null;
+      clearOcrOverlay();
+      
+      document.getElementById('ocrCalibrationModal').classList.remove('hidden');
+    }
+    
+    // Clear overlay
+    function clearOcrOverlay() {
+      const ctx = document.getElementById('ocrRoiOverlay').getContext('2d');
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+    
+    // Draw ROI rectangle
+    function drawOcrRoiRect(rect) {
+      const ctx = document.getElementById('ocrRoiOverlay').getContext('2d');
+      clearOcrOverlay();
+      if (!rect) return;
+      
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
+      ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    }
+    
+    // Get coordinates from event
+    function getOcrCoords(e) {
+      const overlay = document.getElementById('ocrRoiOverlay');
+      const rect = overlay.getBoundingClientRect();
+      const scaleX = overlay.width / rect.width;
+      const scaleY = overlay.height / rect.height;
+      
+      let clientX, clientY;
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+    
+    // Reset OCR ROI
+    function resetOcrRoi() {
+      state.ocrCurrentRect = null;
+      clearOcrOverlay();
+      document.getElementById('ocrRoiInfo').textContent = 'Tap and drag to select area';
+      document.getElementById('confirmOcrCalibration').disabled = true;
+    }
+    
+    // Confirm OCR calibration
+    function confirmOcrCalibration() {
+      if (!state.ocrCurrentRect) return;
+      
+      state.ocrRoi = {
+        x: state.ocrCurrentRect.x / state.ocrCalibration.videoWidth,
+        y: state.ocrCurrentRect.y / state.ocrCalibration.videoHeight,
+        width: state.ocrCurrentRect.width / state.ocrCalibration.videoWidth,
+        height: state.ocrCurrentRect.height / state.ocrCalibration.videoHeight
+      };
+      
+      document.getElementById('ocrCalibrationModal').classList.add('hidden');
+      updateOcrLiveRoi();
+      
+      document.getElementById('startOcrBtn').disabled = false;
+      document.getElementById('calibrateBtn').textContent = 'Recalibrate';
+      
+      console.log('[OCR] ROI saved:', state.ocrRoi);
+    }
+    
+    // Update live ROI display
+    function updateOcrLiveRoi() {
+      if (!state.ocrRoi) return;
+      
+      const video = document.getElementById('ocrVideo');
+      const container = document.getElementById('cameraContainer');
+      const containerRect = container.getBoundingClientRect();
+      
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+      
+      const videoAspect = videoWidth / videoHeight;
+      const containerAspect = containerWidth / containerHeight;
+      
+      let scale, offsetX, offsetY;
+      if (videoAspect > containerAspect) {
+        scale = containerHeight / videoHeight;
+        const scaledWidth = videoWidth * scale;
+        offsetX = (containerWidth - scaledWidth) / 2;
+        offsetY = 0;
+      } else {
+        scale = containerWidth / videoWidth;
+        const scaledHeight = videoHeight * scale;
+        offsetX = 0;
+        offsetY = (containerHeight - scaledHeight) / 2;
+      }
+      
+      const displayX = (state.ocrRoi.x * videoWidth * scale) + offsetX;
+      const displayY = (state.ocrRoi.y * videoHeight * scale) + offsetY;
+      const displayW = state.ocrRoi.width * videoWidth * scale;
+      const displayH = state.ocrRoi.height * videoHeight * scale;
+      
+      const roiRect = document.getElementById('liveRoiRect');
+      roiRect.style.display = 'block';
+      roiRect.style.left = `${displayX}px`;
+      roiRect.style.top = `${displayY}px`;
+      roiRect.style.width = `${displayW}px`;
+      roiRect.style.height = `${displayH}px`;
+    }
+    
+    // Start OCR reading
+    function startOcrReading() {
+      if (!state.ocrRoi) {
+        alert('Please calibrate first');
+        return;
+      }
+      
+      const interval = parseFloat(document.getElementById('ocrIntervalSlider').value) * 1000;
+      state.ocrInterval = setInterval(() => {
+        if (!state.ocrProcessing) processOcrFrame();
+      }, interval);
+      
+      document.getElementById('startOcrBtn').disabled = true;
+      document.getElementById('stopOcrBtn').disabled = false;
+      document.getElementById('captureOcrBtn').disabled = false;
+      document.getElementById('stopOcrBtn').classList.add('active');
+    }
+    
+    // Stop OCR reading
+    function stopOcrReading() {
+      if (state.ocrInterval) {
+        clearInterval(state.ocrInterval);
+        state.ocrInterval = null;
+      }
+      
+      document.getElementById('startOcrBtn').disabled = false;
+      document.getElementById('stopOcrBtn').disabled = true;
+      document.getElementById('captureOcrBtn').disabled = true;
+      document.getElementById('stopOcrBtn').classList.remove('active');
+    }
+    
+    // Process OCR frame
+    async function processOcrFrame() {
+      const video = document.getElementById('ocrVideo');
+      if (!video.videoWidth || !state.ocrRoi) return;
+      
+      state.ocrProcessing = true;
+      document.getElementById('ocrValue').textContent = '...';
+      
+      try {
+        const fullCanvas = document.createElement('canvas');
+        fullCanvas.width = video.videoWidth;
+        fullCanvas.height = video.videoHeight;
+        const fullCtx = fullCanvas.getContext('2d');
+        fullCtx.drawImage(video, 0, 0);
+        
+        const roiX = state.ocrRoi.x * video.videoWidth;
+        const roiY = state.ocrRoi.y * video.videoHeight;
+        const roiW = state.ocrRoi.width * video.videoWidth;
+        const roiH = state.ocrRoi.height * video.videoHeight;
+        
+        const roiCanvas = document.createElement('canvas');
+        roiCanvas.width = roiW;
+        roiCanvas.height = roiH;
+        const roiCtx = roiCanvas.getContext('2d');
+        roiCtx.drawImage(fullCanvas, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+        
+        // Preprocess image
+        const processedCanvas = preprocessOcrImage(roiCanvas);
+        
+        // OCR with Tesseract.js
+        const result = await Tesseract.recognize(processedCanvas, 'eng', {
+          tessedit_char_whitelist: '0123456789.-'
+        });
+        
+        const value = extractNumber(result.data.text);
+        
+        if (value !== null) {
+          document.getElementById('ocrValue').textContent = value.toFixed(2);
+          
+          // Get current GPS location
+          const location = state.user && state.user.lat && state.user.lng 
+            ? `${state.user.lat.toFixed(5)}, ${state.user.lng.toFixed(5)}` 
+            : '--';
+          document.getElementById('ocrLocation').textContent = `📍 ${location}`;
+          
+          // Send OCR reading to server
+          sendOcrReading(value, state.user?.lat, state.user?.lng);
+        } else {
+          document.getElementById('ocrValue').textContent = '--';
+        }
+      } catch (err) {
+        console.error('[OCR] Error:', err);
+        document.getElementById('ocrValue').textContent = 'ERR';
+      }
+      
+      state.ocrProcessing = false;
+    }
+    
+    // Preprocess image for OCR
+    function preprocessOcrImage(sourceCanvas) {
+      const canvas = document.createElement('canvas');
+      const scale = 2;
+      canvas.width = sourceCanvas.width * scale;
+      canvas.height = sourceCanvas.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        const threshold = 128;
+        const contrast = 1.5;
+        const newValue = gray > threshold
+          ? Math.min(255, (gray - 128) * contrast + 200)
+          : Math.max(0, (gray - 128) * contrast + 50);
+        const binary = newValue > 128 ? 255 : 0;
+        data[i] = binary;
+        data[i + 1] = binary;
+        data[i + 2] = binary;
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      return canvas;
+    }
+    
+    // Extract number from text
+    function extractNumber(text) {
+      if (!text) return null;
+      const numbers = text.match(/-?\d+\.?\d*/g);
+      if (numbers && numbers.length > 0) {
+        const value = parseFloat(numbers[0]);
+        return isNaN(value) ? null : value;
+      }
+      return null;
+    }
+    
+    // Send OCR reading to server
+    function sendOcrReading(value, lat, lng) {
+      if (state.socket && state.currentSession) {
+        const reading = {
+          value: value,
+          lat: lat,
+          lng: lng,
+          timestamp: Date.now(),
+          user: state.user.name,
+          color: state.user.color
+        };
+        state.socket.emit('ocr:reading', reading);
+      }
+    }
+    
+    // Add OCR reading to chart and log
+    function addOcrReading(reading) {
+      state.ocrReadings.push(reading);
+      
+      // Update chart
+      const timeLabel = new Date(reading.timestamp).toLocaleTimeString();
+      
+      // Find or create dataset for this user
+      let dataset = state.ocrChart.data.datasets.find(d => d.label === reading.user);
+      if (!dataset) {
+        dataset = {
+          label: reading.user,
+          data: [],
+          borderColor: reading.color,
+          backgroundColor: reading.color + '33',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3
+        };
+        state.ocrChart.data.datasets.push(dataset);
+      }
+      
+      dataset.data.push(reading.value);
+      state.ocrChart.data.labels.push(timeLabel);
+      
+      // Keep only last 50 points
+      if (state.ocrChart.data.labels.length > 50) {
+        state.ocrChart.data.labels.shift();
+        state.ocrChart.data.datasets.forEach(d => d.data.shift());
+      }
+      
+      state.ocrChart.update('none');
+      
+      // Update log
+      const logDiv = document.getElementById('ocrDataLog');
+      if (logDiv.querySelector('.no-ocr-data')) {
+        logDiv.innerHTML = '';
+      }
+      
+      const entry = document.createElement('div');
+      entry.className = 'ocr-log-entry';
+      entry.innerHTML = `
+        <span class="ocr-log-user" style="color: ${reading.color}">${reading.user}</span>
+        <span class="ocr-log-value">${reading.value.toFixed(2)}</span>
+        <span class="ocr-log-time">${timeLabel}</span>
+      `;
+      logDiv.insertBefore(entry, logDiv.firstChild);
+      
+      // Keep only last 20 entries
+      while (logDiv.children.length > 20) {
+        logDiv.removeChild(logDiv.lastChild);
+      }
+    }
+    
+    // ==================== End OCR Functions ====================
+    
     // Start the app
     init();
 
